@@ -16,9 +16,13 @@ class Canvas:
     def __init__(self, out_path=None, figsize=(5.0,5.0*3/4), ext=None):
         self.fig = Figure(figsize)
         self.canvas = FigureCanvas(self.fig)
-        grid = GridSpec(2,1, height_ratios=[3,1])
+        #grid = GridSpec(2,1, height_ratios=[3,1])
+        #self.ax = self.fig.add_subplot(grid[0])
+        #self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
+        grid = GridSpec(3,1, height_ratios=[3,1,1])
         self.ax = self.fig.add_subplot(grid[0])
         self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
+        self.ratio2 = self.fig.add_subplot(grid[2], sharex=self.ax)
         setp(self.ax.get_xticklabels(), visible=False)
         self.out_path = out_path
         self.ext = ext
