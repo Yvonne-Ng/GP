@@ -31,12 +31,14 @@ def run():
         x, y, xerr, yerr = get_xy_pts(
             h5file['dijetgamma_g85_2j65']['Zprime_mjj_var'])
 
+    #making sure the points are valid
     valid_x = (x > 0) & (x < 1500)
     valid_y = y > 0
     valid = valid_x & valid_y
     x, y = x[valid], y[valid]
     xerr, yerr = xerr[valid], yerr[valid]
 
+    #calculating the log-likihood and minimizing for the gp 
     lnProb = logLike_minuit(x, y, xerr)
     min_likelihood, best_fit = fit_gp_minuit(20, lnProb)
 
