@@ -9,11 +9,15 @@ from h5py import File
 import numpy as np
 import george
 from george.kernels import MyDijetKernelSimp
+from iminuit import Minuit
+import scipy.special as ssp
+
 
 def parse_args():
     parser = ArgumentParser(description=__doc__)
     d = dict(help='%(default)s')
     parser.add_argument('input_file')
+    parser.add_argument('signal_file')
     parser.add_argument('-e', '--output-file-extension', default='.pdf')
     parser.add_argument('-n', '--n-fits', type=int, default=10, **d)
     return parser.parse_args()
@@ -30,13 +34,25 @@ def run():
         # dijetgamma_g85_2j65 Zprime_mjj_var
         x, y, xerr, yerr = get_xy_pts(
             h5file['dijetgamma_g85_2j65']['Zprime_mjj_var'])
-
-    #making sure the points are valid
-    valid_x = (x > 0) & (x < 1500)
-    valid_y = y > 0
+    #Adding signal
+    with File(args.signal_file,'r') as h5fileSig:
+        xSig, ySig, xerrSig, yerrSig = get_xy_pts(h5fileSig['dijetgamma_g85_2j65']['Zprime_mjj_var'])
+    xMin = 0
+    xMax = 1500
+    yMin=0
+    #making sure the bkgnd points are valid
+    valid_x = (x > xMin) & (x < xMax)
+    valid_y = y > yMin
     valid = valid_x & valid_y
     x, y = x[valid], y[valid]
     xerr, yerr = xerr[valid], yerr[valid]
+    print("xerr:", xerr)
+    #making sure the signal bkgnd points are valid
+    valid_xSig = (xSig>xMin) &(xSig<xMax) 
+    valid_ySig = y>yMin
+    validSig = valid_xSig & valid_y
+    xSig, ySig = xSig[validSig], ySig[validSig]
+    xerrSig, yerrSig = xerrSig[validSig], yerrSig[validSig]
 
     #calculating the log-likihood and minimizing for the gp 
     lnProb = logLike_minuit(x, y, xerr)
@@ -44,21 +60,30 @@ def run():
 
     t = np.linspace(np.min(x), np.max(x), 500)
     fit_pars = [best_fit[x] for x in FIT_PARS]
+    #drawing the single line in points.pdf
     with Canvas(f'points{ext}') as can:
         can.ax.errorbar(x, y, yerr=yerr, fmt='.')
         can.ax.set_yscale('log')
+    #making the GP
     kargs = {x:y for x, y in best_fit.items() if x not in FIT_PARS}
     kernel_new = get_kernel(**kargs)
     print(kernel_new.get_parameter_names())
+    #making the kernel
     gp_new = george.GP(kernel_new, mean=Mean(fit_pars), fit_mean = True)
-
-
     gp_new.compute(x, yerr)
     mu, cov = gp_new.predict(y, t)
     mu_x, cov_x = gp_new.predict(y, x)
+    # calculating the fit function value
+    fit_meanM = gp_new.mean.get_value(x, xerr)
+    print("fit_meanM:",fit_meanM)
+    #fit_mean_smooth = gp_new.mean.get_value(t)
+    #Calculate the fit function in a different way
+    lnProb = logLike_3ff(x,y,xerr)
+    minimumLLH, best_fit_params = fit_3ff(100, lnProb)
+    fit_mean = model_3param(x, best_fit_params, xerr)
+    #calculating significance 
     signif = (y - mu_x) / np.sqrt(np.diag(cov_x) + yerr**2)
-    fit_mean = gp_new.mean.get_value(x)
-    fit_mean_smooth = gp_new.mean.get_value(t)
+    sigFit = (y - mu_x) / np.sqrt(np.diag(cov_x) + yerr**2)
     std = np.sqrt(np.diag(cov))
 
     ext = args.output_file_extension
@@ -67,12 +92,14 @@ def run():
         can.ax.set_yscale('log')
         # can.ax.set_ylim(1, can.ax.get_ylim()[1])
         can.ax.plot(t, mu, '-r')
-        # can.ax.plot(x, fit_mean, '.b')
+        can.ax.plot(x, fit_mean, '.b')
+        can.ax.plot(x, fit_meanM, '.g')
         # can.ax.plot(t, fit_mean_smooth, '--b')
         can.ax.fill_between(t, mu - std, mu + std,
                             facecolor=(0, 1, 0, 0.5),
                             zorder=5, label='err = 1')
         can.ratio.stem(x, signif, markerfmt='.', basefmt=' ')
+        can.ratio.stem(x, sigFit, markerfmt='.', basefmt=' ')
         can.ratio.axhline(0, linewidth=1, alpha=0.5)
 
 # _________________________________________________________________
@@ -94,7 +121,6 @@ class logLike_minuit:
             return np.inf
 
 def fit_gp_minuit(num, lnprob):
-    from iminuit import Minuit
 
     min_likelihood = np.inf
     best_fit_params = (0, 0, 0, 0, 0)
@@ -136,9 +162,12 @@ def fit_gp_minuit(num, lnprob):
                    limit_length = (100, 1e8),
                    limit_power = (0.01, 1000),
                    limit_sub = (0.01, 1e6),
-                   limit_p0 = bound('p0', neg=False),
-                   limit_p1 = bound('p1', neg=True),
-                   limit_p2 = bound('p2', neg=True))
+                   #limit_p0 = bound('p0', neg=False),
+                   #limit_p1 = bound('p1', neg=True),
+                   #limit_p2 = bound('p2', neg=True))
+                   limit_p0 = (0,100),
+                   limit_p1 = (-100,100),
+                   limit_p2 = (-100,100))
         m.migrad()
         print(m.fval)
         if m.fval < min_likelihood and m.fval != 0.0:
@@ -148,12 +177,65 @@ def fit_gp_minuit(num, lnprob):
     print(f'best fit params {best_fit_params}')
     return min_likelihood, best_fit_params
 
+#------fit 3
+def simpleLogPoisson(x, par):
+    if x < 0: 
+        return np.inf
+    elif (x == 0): return -1.*par
+    else:
+        lnpoisson = x*np.log(par)-par-ssp.gammaln(x+1.)
+        return lnpoisson
+
+def model_3param(t, params, xErr): 
+    p0, p1, p2 = params
+    sqrts = 13000.
+    return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))*(xErr) 
+
+class logLike_3ff:
+    def __init__(self, x, y, xe):
+        self.x = x
+        self.y = y
+        self.xe = xe
+    def __call__(self, p0, p1, p2):
+        params = p0, p1, p2
+        bkgFunc = model_3param(self.x, params, self.xe)       
+        logL = 0
+        for ibin in range(len(self.y)):
+            data = self.y[ibin]
+            bkg = bkgFunc[ibin]
+            logL += -simpleLogPoisson(data, bkg)
+        try:
+            logL
+            return logL
+        except:
+            return np.inf
+
+def fit_3ff(num,lnprob, Print=True):
+    minLLH = np.inf
+    best_fit_params = (0., 0., 0.)
+    for i in range(num):
+        init0 = np.random.random() * 1.
+        init1 = np.random.random() * 8.
+        init2 = np.random.random() * 6.
+        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
+                  p0 = init0, p1 = init1, p2 = init2,
+                  error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, 
+                  limit_p0 = (0, 100.), limit_p1 = (-100., 100.), limit_p2 = (-100., 100.))
+        m.migrad()
+        if m.fval < minLLH:
+            minLLH = m.fval
+            best_fit_params = m.args 
+    if Print:
+        print ("min LL", minLLH)
+        print ("best fit vals", best_fit_params)
+    return minLLH, best_fit_params
+
 class Mean():
     def __init__(self, params):
         self.p0=params[0]
         self.p1=params[1]
         self.p2=params[2]
-    def get_value(self, t):
+    def get_value(self, t, xErr=[]):
         sqrts = 13000.
         p0, p1, p2 = self.p0, self.p1, self.p2
         # steps = np.append(np.diff(t), np.diff(t)[-1])
