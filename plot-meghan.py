@@ -8,9 +8,11 @@ from argparse import ArgumentParser
 from h5py import File
 import numpy as np
 import george
-from george.kernels import MyDijetKernelSimp
+from george.kernels import MyDijetKernelSimp, ExpSquaredCenteredKernel, ExpSquaredKernel
 from iminuit import Minuit
 import scipy.special as ssp
+import inspect
+
 
 
 def parse_args():
@@ -61,7 +63,7 @@ def get_kernel(Amp, decay, length, power, sub):
     return Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
 
 def get_kernel_Xtreme(Amp, decay, length, power, sub, mass, tau):
-    kernelsig = A * ExpSquaredCenteredKernel(m=mass, t=tau)
+    kernelsig = Amp * ExpSquaredCenteredKernel(m=mass, t=tau)
     kernelbkg = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
     return kernelsig+kernelbkg
 
@@ -391,7 +393,7 @@ def run_bkgndVswithSig_GP():
     mass = 750
     # Getting data points
     xRaw, yRaw, xerrRaw, yerrRaw = getDataPoints(args.input_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
-    xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g150_2j25', 'Zprime_mjj_var')
+    xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
 
     #Data processing, cutting out the not desired range
     xBkg, yBkg, xerrBkg, yerrBkg = dataCut(0, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
@@ -409,8 +411,10 @@ def run_bkgndVswithSig_GP():
     #bkgnd calculating the log-likihood and minimizing for the gp
     lnProbBkg = logLike_minuit(xBkg, yBkg, xerrBkg)
     min_likelihood, best_fit = fit_gp_minuit(20, lnProbBkg)
+    print(best_fit)
 
-    fit_pars = [best_fit[xBkg] for xBkg in FIT3_PARS]
+    fit_pars = best_fit[-3:]
+    #fit_pars=[bestfit[]]
 
     #making the GP
     kargs = {xBkg:yBkg for xBkg, yBkg in best_fit.items() if xBkg not in FIT3_PARS}
@@ -425,7 +429,7 @@ def run_bkgndVswithSig_GP():
     #signal calulating the log_likihood and minizming for the GP
     # calculating the fit function value
     lnProbSig = logLike_gp_fitgpsig(xSig, ySig, xerrSig)
-    min_likelihoodSig, best_fitSig = fit_gp_fitgpsig_minuit(20, lnProbSig)
+    min_likelihoodSig, best_fitSig = fit_gp_fitgpsig_minuit(lnProbSig)
 
     fit_pars = [best_fit[xSig] for xSig in FIT3_PARS]
 
@@ -456,7 +460,7 @@ def run_bkgndVswithSig_GP():
     std = np.sqrt(np.diag(cov_xBkg))
 
     ext = args.output_file_extension
-    with Canvas(f'compareGPvs3Param{ext}') as can:
+    with Canvas(f'compareGPvsSignal{ext}') as can:
         can.ax.errorbar(xBkg, yBkg, yerr=yerrBkg, fmt='.g')
         can.ax.set_yscale('log')
         # can.ax.set_ylim(1, can.ax.get_ylim()[1])
@@ -557,8 +561,8 @@ class logLike_gp_fitgpsig:
         self.y = y
         self.xerr = xerr
 
-    def __call__(self, A, mass, tau):
-        Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
+    def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A, mass, tau):
+        #Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
         kernel1 = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
         kernel2 = A * ExpSquaredCenteredKernel(m=mass, t=tau)
         kernel = kernel1 + kernel2
@@ -577,13 +581,26 @@ def fit_gp_fitgpsig_minuit(lnprob, Print=True):
     numRetries = 0
 
     for i in range(100):
-        init0 = np.random.random() * 500.
-        init1 = np.random.random() * 4000.
-        init2 = np.random.random() * 200.
-        m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0, errordef=0.5,
-                   A=init0, mass=init1, tau=init2,
-                   error_A=1., error_mass=1., error_tau=1.,
-                   limit_A=(1, 1e5), limit_mass=(1000, 7000), limit_tau=(100, 500))
+        iAmp= np.random.random() * 500.
+        iDecay = np.random.random() * 4000.
+        ilength = np.random.random() * 200.
+        ipower = np.random.random() * 1.0
+        isub= np.random.random() * 1.0
+        ip0= np.random.random() * 52
+        ip1= np.random.random() * 53
+        ip2= np.random.random() * -1.2
+        iA = np.random.random() *-50
+        imass=np.random.random()*500
+        itau=np.random.random()* 200
+
+        print(lnprob)
+        print(inspect.getargspec(logLike_gp_fitgpsig))
+
+        m = Minuit(lnprob, throw_nan=False, pedantic=True, print_level=0, #errordef=0.5,
+                   Amp=iAmp, decay=iDecay, length=ilength, power=ipower, sub=isub, p0=ip0, p1=ip1, p2=ip2, A=iA, mass=imass, tau=itau,
+                   error_Amp=1e1, error_decay=1e1, error_length=1e1, error_power=1e1, error_sub=1e1, error_p0=1e-2, error_p1=1e-2, error_p2=1e-2, error_A=1., error_mass=1., error_tau=1.,
+                   limit_Amp=(-100000,100000), limit_decay=(0.01, 1000), limit_length=(100, 1e8), limit_power=(0.01, 1000), limit_sub=(0.01, 1e6), limit_p0=(0,100.), limit_p1=(-100., 100.), limit_p2=(-100., 100), limit_A=(0,100), limit_mass=(1000, 7000), limit_tau=(100, 500))
+
         fit = m.migrad()
         if m.fval < bestval:
             bestval = m.fval
