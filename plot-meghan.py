@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from h5py import File
 import numpy as np
 import george
-from george.kernels import MyDijetKernelSimp, ExpSquaredCenteredKernel, ExpSquaredKernel
+from george.kernels import MyDijetKernelSimp, ExpSquared, LocalGaussian#, ExpSquaredCenteredKernel#, ExpSquaredKernel
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
@@ -53,7 +53,7 @@ class Mean():
         p0, p1, p2 = self.p0, self.p1, self.p2
         # steps = np.append(np.diff(t), np.diff(t)[-1])
         # print(steps)
-        print("size of t",t.shape)
+        #print("size of t",t.shape)
         #print("size of xErr", xErr.shape)
         vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
         #print(vals)
@@ -138,14 +138,13 @@ def run_vs_3paramFit():
     args = parse_args()
     ext = args.output_file_extension
     from pygp.canvas import Canvas
-
+    xMinFit=300
     # Getting data points
     xRaw, yRaw, xerrRaw, yerrRaw = getDataPoints(args.input_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
     xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
 
     #Data processing, cutting out the not desired range
-    x, y, xerr, yerr = dataCut(0, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
-    xMinFit=300
+    x, y, xerr, yerr = dataCut(xMinFit, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
     xFit, yFit, xerrFit, yerrFit= dataCut(xMinFit, 1500, 0, xRaw, yRaw,xerrRaw,yerrRaw)
 
     # make an evently spaced x
@@ -153,7 +152,24 @@ def run_vs_3paramFit():
 
     #calculating the log-likihood and minimizing for the gp
     lnProb = logLike_minuit(x, y, xerr)
-    min_likelihood, best_fit = fit_gp_minuit(20, lnProb)
+
+#
+#        idecay = np.random.random() * 0.64
+#        ilength = np.random.random() * 5e5
+#        ipower = np.random.random() * 1.0
+#        isub = np.random.random() * 1.0
+#        'amp': 5701461179.0,
+#        'p0': 0.23,
+#        'p1': 0.46,
+#        'p2': 0.89
+#
+#dan crap initial guess->returns infiinity
+    print("prob:", lnProb(5701461179.0, 0.64, 5e5, 1.0, 1.0, 0.23, 0.46, 0.89))
+    print("prob:", lnProb(7894738685.23, 91.507809530688036,  152892.47486888882, 0.77936430405302681, 393.57106174440003, 0.46722747265429021,0.92514297129196166, 1.7803224928740065))
+
+    #def __call__(self, Amp, decay, length, power, sub, p0, p1, p2):
+    
+    min_likelihood, best_fit = fit_gp_minuit(10, lnProb)
 
     fit_pars = [best_fit[x] for x in FIT3_PARS]
 
@@ -200,7 +216,7 @@ def run_vs_3paramFit():
     std = np.sqrt(np.diag(cov))
 
     ext = args.output_file_extension
-    title="compareGPvs3Param"
+    title="test"
     with Canvas(f'%s{ext}'%title) as can:
         can.ax.errorbar(x, y, yerr=yerr, fmt='.')
         can.ax.set_yscale('log')
@@ -218,17 +234,18 @@ def run_vs_3paramFit():
         can.ratio.axhline(0, linewidth=1, alpha=0.5)
         can.ratio2.stem(x, signif, markerfmt='.', basefmt=' ')
         can.save(title)
+        
 def run_vs_UA2Fit():
     args = parse_args()
     ext = args.output_file_extension
     from pygp.canvas import Canvas
 
     # Getting data points/fit
-    xRaw, yRaw, xerrRaw, yerrRaw = getDataPoints(args.input_file, 'dijetgamma_g150_2j25', 'Zprime_mjj_var')
-    xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g150_2j25', 'Zprime_mjj_var')
+    xRaw, yRaw, xerrRaw, yerrRaw = getDataPoints(args.input_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
+    #xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g150_2j25', 'Zprime_mjj_var')
 
     #Data processing, cutting out the not desired range
-    x, y, xerr, yerr = dataCut(0, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
+    x, y, xerr, yerr = dataCut(300, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
     xMinFit=300
     xFit, yFit, xerrFit, yerrFit= dataCut(xMinFit, 1500, 0, xRaw, yRaw,xerrRaw,yerrRaw)
 
@@ -264,7 +281,7 @@ def run_vs_UA2Fit():
 
     #----3 param fit function in a different way
     lnProbUA2 = logLike_UA2(xFit,yFit,xerrFit)
-    minimumLLH, best_fit_params = fit_UA2(1000, lnProbUA2)
+    minimumLLH, best_fit_params = fit_UA2(100, lnProbUA2)
     fit_mean = model_UA2(xFit, best_fit_params, xerrFit)
 
     ##----4 param fit function
@@ -335,7 +352,7 @@ def run_vs_SearchPhase_UA2Fit():
     gp_new = george.GP(kernel_new, mean=Mean(fit_pars), fit_mean = True)
     gp_new.compute(x, yerr)
     mu, cov = gp_new.predict(y, t)
-    mu_x, cov_x = gp_new.predict(y, x)
+    mu_x, cov_x = gp_new.predict(y, xFit)
     # calculating the fit function value
 
     #GP compute minimizes the log likelihood of the best_fit function
@@ -396,7 +413,7 @@ def run_bkgndVswithSig_GP():
     xSig, ySig, xerrSig, yerrSig = getDataPoints(args.signal_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
 
     #Data processing, cutting out the not desired range
-    xBkg, yBkg, xerrBkg, yerrBkg = dataCut(0, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
+    xBkg, yBkg, xerrBkg, yerrBkg = dataCut(300, 1500, 0, xRaw, yRaw, xerrRaw, yerrRaw)
     xSig, ySig, xerrSig, yerrSig = dataCut(300,1500, 0, xSig, ySig, xerrSig, yerrSig)
 
     # make an evently spaced x
@@ -410,11 +427,10 @@ def run_bkgndVswithSig_GP():
 
     #bkgnd calculating the log-likihood and minimizing for the gp
     lnProbBkg = logLike_minuit(xBkg, yBkg, xerrBkg)
-    min_likelihood, best_fit = fit_gp_minuit(20, lnProbBkg)
+    min_likelihood, best_fit = fit_gp_minuit(100, lnProbBkg)
     print(best_fit)
 
-    fit_pars = best_fit[-3:]
-    #fit_pars=[bestfit[]]
+    fit_pars = [best_fit[x] for x in FIT3_PARS]
 
     #making the GP
     kargs = {xBkg:yBkg for xBkg, yBkg in best_fit.items() if xBkg not in FIT3_PARS}
@@ -433,10 +449,6 @@ def run_bkgndVswithSig_GP():
 
     fit_pars = [best_fit[xSig] for xSig in FIT3_PARS]
 
-    #making the GP
-    #print("kargs",type(kargs))
-    #kargs["mass"]=mass
-    #kargs = {xSig:ySig for xSig, ySig in best_fit.items() if xSig not in FIT3_PARS}
     Args=kargs+best_fitSig
     kernel_Sig = get_kernelXtreme(**Arg)
     print(kernel_Sig.get_parameter_names())
@@ -476,6 +488,97 @@ def run_bkgndVswithSig_GP():
         can.ratio2.stem(xSig, signSig, markerfmt='.', basefmt=' ')
         can.ratio.axhline(0, linewidth=1, alpha=0.5)
 
+def y_bestFit3Params(x, y, xerr, likelihoodTrial):
+    lnProb = logLike_3ff(x,y,xerr)
+    minimumLLH, best_fit_params = fit_3ff(100, lnProb) #finding the best fit param by the minimum likelihood 
+    fit_mean = model_3param(x, best_fit_params, xerr) # fitting using the best fit params 
+    return fit_mean
+
+
+def run_bkgnd():
+    xMin=300
+    xMax=1500
+    xMinFit=300
+    xMaxFit=1500
+
+    args = parse_args()
+    ext = args.output_file_extension
+    from pygp.canvas import Canvas
+
+    # Getting data points
+    xRaw, yRaw, xerrRaw, yerrRaw = getDataPoints(args.input_file, 'dijetgamma_g85_2j65', 'Zprime_mjj_var')
+
+    #Data processing, cutting out the not desired range
+    xBkg, yBkg, xerrBkg, yerrBkg = dataCut(xMin, xMax, 0, xRaw, yRaw, xerrRaw, yerrRaw) # for GP bkgnd kernel and signal kernel 
+    xBkgFit, yBkgFit, xerrBkgFit, yerrBkgFit= dataCut(xMinFit, xMaxFit, 0, xRaw, yRaw,xerrRaw,yerrRaw) # for fit function 
+
+    # make an evently spaced x
+    t = np.linspace(np.min(xBkg), np.max(xBkg), 500)
+
+    #Drawing the raw data of just the bkgnd and Sig + bkgnd
+    with Canvas(f'RawBkgnd') as can: # just to check and see everything is okay
+        can.ax.errorbar(xBkg, yBkg, yerr=yerrBkg, fmt='.g')
+        can.ax.set_yscale('log')
+
+    #GP bkgnd calculating the log-likihood and minimizing for the gp
+    lnProbBkg = logLike_minuit(xBkg, yBkg, xerrBkg)
+    min_likelihood, best_fit = fit_gp_minuit(10, lnProbBkg)
+    print(best_fit)
+
+    fit_pars = [best_fit[x] for x in FIT3_PARS]
+
+    #making the GP
+    kargs = {xBkg:yBkg for xBkg, yBkg in best_fit.items() if xBkg not in FIT3_PARS}
+    kernel_Bkg = get_kernel(**kargs)
+    print(kernel_Bkg.get_parameter_names())
+    #making the kernel
+    gp_Bkg = george.GP(kernel_Bkg, mean=Mean(fit_pars), fit_mean = True)
+    gp_Bkg.compute(xBkg, yerrBkg)
+    #muBkg, covBkg = gp_Bkg.predict(yBkg, t)
+    mu_xBkg, cov_xBkg = gp_Bkg.predict(yBkg, xBkg)
+
+#finding the fit y values 
+    fit_mean=y_bestFit3Params(xBkgFit, yBkgFit, xerrBkgFit, 10)
+    ext = args.output_file_extension
+    title="test"
+    with Canvas(f'%s{ext}'%title, "Fit Function", "GP bkgnd kernel", "GP signal+bkgnd kernel", 3) as can:
+        can.ax.errorbar(xBkg, yBkg, yerr=yerrBkg, fmt='.g') # drawing the points
+        can.ax.set_yscale('log')
+        can.ax.plot(xBkg, mu_xBkg, '-g') #drawing 
+        can.ax.plot(xBkgFit, fit_mean, '-r')
+        #can.ax.xticks(xBkg)
+        #this only works with the xErr part of Mean commented out
+        #can.ax.plot(x, fit_meanM, '.g')
+        # can.ax.plot(t, fit_mean_smooth, '--b')
+        #can.ax.fill_between(t, mubkg - std, mu + std,
+                            #facecolor=(0, 1, 0, 0.5),
+                            #zorder=5, label='err = 1')
+        #can.ratio.stem(xBkg, signBkg, markerfmt='.', basefmt=' ')
+        #can.ratio2.stem(xSig, signSig, markerfmt='.', basefmt=' ')
+        can.ratio.axhline(0, linewidth=1, alpha=0.5)
+        can.save(title)
+#calculting with the signal kernel -
+'''
+    lnProbSig = logLike_gp_fitgpsig(xSig, ySig, xerrSig)
+    min_likelihoodSig, best_fitSig = fit_gp_fitgpsig_minuit(lnProbSig)
+
+    fit_pars = [best_fit[xSig] for xSig in FIT3_PARS]
+
+    Args=kargs+best_fitSig
+    kernel_Sig = get_kernelXtreme(**Arg)
+    print(kernel_Sig.get_parameter_names())
+    #making the kernel
+    gp_sig = george.GP(kernel_Sig, mean=Mean(fit_pars), fit_mean = True)
+    gp_sig.compute(xSig, yerrSig)
+    muSig, covSig = gp_sig.predict(ySig, t)
+    mu_xSig, cov_xSig = gp_Sig.predict(ySig, xSig)
+    #GP compute minimizes the log likelihood of the best_fit function
+    best = [best_fit[x] for x in FIT3_PARS]
+#calculating significance
+    signBkg = significance(mu_xBkg, yBkg, cov_xBkg, yerrBkg)
+    #sigFit = (fit_mean - y[initialCutPos:]) / np.sqrt(np.diag(cov_x[initialCutPos:]) + yerr[initialCutPos:]**2)
+    signSig =significance(mu_xSig, ySig, cov_xSig, yerrSig)
+    '''
 # _________________________________________________________________
 # stuff copied from Meghan
 
@@ -497,52 +600,49 @@ class logLike_minuit:
 def fit_gp_minuit(num, lnprob):
 
     min_likelihood = np.inf
-    best_fit_params = (0, 0, 0, 0, 0)
+    best_fit_params = (0, 0, 0, 0, 0,0,0,0)
     guesses = {
         'amp': 5701461179.0,
-        'p0': 52.465,
-        'p1': 53.66,
-        'p2': -1.199
+        'p0': 0.23,
+        'p1': 0.46,
+        'p2': 0.89
     }
-    def bound(par, neg=False):
+    def bound(par, neg=false):
         if neg:
             return (-2.0*guesses[par], 2.0*guesses[par])
         return (guesses[par] * 0.5, guesses[par] * 2.0)
     for i in range(num):
         iamp = np.random.random() * 2*guesses['amp']
         idecay = np.random.random() * 0.64
-        ilength = np.random.random() * 5e7
+        ilength = np.random.random() * 5e5
         ipower = np.random.random() * 1.0
         isub = np.random.random() * 1.0
-        #ip0 = np.random.random() * guesses['p0'] * 2
-        #ip1 = np.random.random() * guesses['p1'] * 2
-        #ip2 = np.random.random() * guesses['p2'] * 2
         ip0 = guesses['p0']
         ip1 = guesses['p1']
         ip2 = guesses['p2']
-        m = Minuit(lnprob, throw_nan = True, pedantic = True,
+        m = minuit(lnprob, throw_nan = true, pedantic = true,
                    print_level = 0, errordef = 0.5,
-                   Amp = iamp,
+                   amp = iamp,
                    decay = idecay,
                    length = ilength,
                    power = ipower,
                    sub = isub,
                    p0 = ip0, p1 = ip1, p2 = ip2,
-                   error_Amp = 1e1,
+                   error_amp = 1e1,
                    error_decay = 1e1,
                    error_length = 1e1,
                    error_power = 1e1,
                    error_sub = 1e1,
                    error_p0 = 1e-2, error_p1 = 1e-2, error_p2 = 1e-2,
-                   limit_Amp = bound('amp'),
+                   limit_amp = bound('amp'),
                    limit_decay = (0.01, 1000),
-                   limit_length = (100, 1e8),
-                   limit_power = (0.01, 1000),
-                   limit_sub = (0.01, 1e6),
-                   #limit_p0 = bound('p0', neg=False),
-                   #limit_p1 = bound('p1', neg=True),
-                   #limit_p2 = bound('p2', neg=True))
-                   limit_p0 = (0,100),
+                   limit_length = (1, 1e8),
+                   limit_power = (0.001, 1000),
+                   limit_sub = (0.001, 1e6),
+                   #limit_p0 = bound('p0', neg=false),
+                   #limit_p1 = bound('p1', neg=true),
+                   #limit_p2 = bound('p2', neg=true))
+                   limit_p0 = (-100,1000000),
                    limit_p1 = (-100,100),
                    limit_p2 = (-100,100))
         m.migrad()
@@ -550,7 +650,7 @@ def fit_gp_minuit(num, lnprob):
         if m.fval < min_likelihood and m.fval != 0.0:
             min_likelihood = m.fval
             best_fit_params = m.values
-    print("min LL", min_likelihood)
+    print("min ll", min_likelihood)
     print(f'best fit params {best_fit_params}')
     return min_likelihood, best_fit_params
 
@@ -581,17 +681,17 @@ def fit_gp_fitgpsig_minuit(lnprob, Print=True):
     numRetries = 0
 
     for i in range(100):
-        iAmp= np.random.random() * 500.
-        iDecay = np.random.random() * 4000.
-        ilength = np.random.random() * 200.
-        ipower = np.random.random() * 1.0
-        isub= np.random.random() * 1.0
-        ip0= np.random.random() * 52
-        ip1= np.random.random() * 53
-        ip2= np.random.random() * -1.2
-        iA = np.random.random() *-50
-        imass=np.random.random()*500
-        itau=np.random.random()* 200
+        iAmp= 5701461179.0
+        iDecay = 4000.
+        ilength = 200.
+        ipower = 1.0
+        isub= 1.0
+        ip0= 0.23
+        ip1= 0.46
+        ip2= 0.89
+        iA = 5.0
+        imass=500
+        itau= 200
 
         print(lnprob)
         print(inspect.getargspec(logLike_gp_fitgpsig))
@@ -647,9 +747,9 @@ def fit_3ff(num,lnprob, Print=True):
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
     for i in range(num):
-        init0 = np.random.random() * 52.
-        init1 = np.random.random() * 53.
-        init2 = np.random.random() * -1.199
+        init0 =  0.2336
+        init1 = np.random.random() * 0.46
+        init2 = np.random.random() * 0.8901
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
                   p0 = init0, p1 = init1, p2 = init2,
                   error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, 
@@ -692,14 +792,18 @@ def fit_UA2(num,lnprob, Print=True):
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
     for i in range(num):
-        init0 = np.random.random() * 52.
-        init1 = np.random.random() * 53.
-        init2 = np.random.random() * -1.199
-        init3 = np.random.random() * 1
+       # init0 = 52.
+       # init1 = 53.
+       # init2 = -1.199
+       # init3 = 1
+        init0 = 9.6
+        init1 = -1.67
+        init2 = 56.87
+        init3 = -75.877
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
                   p0 = init0, p1 = init1, p2 = init2, p3= init3,
                   error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
-                  limit_p0 = (0, 100.), limit_p1 = (-100., 100.), limit_p2 = (-100., 100.), limit_p3=(-100.,100.))
+                  limit_p0 = (-100000, 1000000.), limit_p1 = (-100., 100.), limit_p2 = (-100., 100.), limit_p3=(-100.,100.))
         m.migrad()
         if m.fval < minLLH:
             minLLH = m.fval
@@ -726,7 +830,7 @@ class logLike_4ff: #if you want to minimize, use this to calculate the log likel
         logL = 0
         for ibin in range(len(self.y)):
             data = self.y[ibin]
-            bkg = bkgFunc[ibin]
+            bkgkgFunc[ibin]
             logL += -simpleLogPoisson(data, bkg)
         try:
             logL
@@ -757,9 +861,10 @@ def fit_4ff(num, lnprob, Print=True): #use this to minimize for the best fit fun
 #-------GP
 
 if __name__ == '__main__':
-    run_vs_3paramFit()
+    #run_vs_3paramFit()
     #run_vs_UA2Fit()
     #run_vs_4paramFit()
     #run_bkgndVswithSig_GP()
+    run_bkgnd()
     #run_vs_SearchPhase_UA2Fit()
     #run_vs_UA2Fit()

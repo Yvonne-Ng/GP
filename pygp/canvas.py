@@ -13,25 +13,30 @@ from matplotlib.pyplot import setp
 
 class Canvas:
     default_name = 'test.pdf'
-    def __init__(self, title="", out_path=None, figsize=(5.0,5.0*3/4), ext=None):
+    def __init__(self, title="", ratioTitle1="", ratioTitle2="", ratioTitle3="", ratioNum=2, out_path=None, figsize=(8,10), ext=None):
         self.fig = Figure(figsize)
         self.fig.subplots_adjust(top=0.85)
         self.canvas = FigureCanvas(self.fig)
         #grid = GridSpec(2,1, height_ratios=[3,1])
         #self.ax = self.fig.add_subplot(grid[0])
         #self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
-        grid = GridSpec(3,1, height_ratios=[3,1,1])
+        grid = GridSpec(3,1, height_ratios=[5,1,1])
+        if ratioNum==3:
+            grid = GridSpec(4,1, height_ratios=[5,1,1,1])
         self.ax = self.fig.add_subplot(grid[0])
         self.ax.set_title(title)
         #self.ax.set_xlabel('mjj (GeV)')
         self.ax.set_ylabel('Event count')
-
+        
         self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
-        self.ratio.set_title("fit function")
+        self.ratio.set_title(ratioTitle1)
         self.ratio2 = self.fig.add_subplot(grid[2], sharex=self.ax)
-        self.ratio2.set_title("GP")
-        self.ratio.set_xlabel(r'this be der $m_{jj}$', ha='right', x=0.98)
-        setp(self.ax.get_xticklabels(), visible=False)
+        self.ratio2.set_title(ratioTitle2)
+        self.ratio2.set_xlabel(r'$m_{jj}$(GeV)', ha='right', x=0.98)
+        if ratioNum==3:
+            self.ratio3 = self.fig.add_subplot(grid[3], sharex=self.ax)
+            self.ratio3.set_title(ratioTitle3)
+            self.ratio3.set_xlabel(r'$m_{jj}(GeV)$', ha='right', x=0.98)
         self.out_path = out_path
         self.ext = ext
         #self.fig.show()
