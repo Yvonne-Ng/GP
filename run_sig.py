@@ -46,13 +46,13 @@ def run_bkgnd():
         can.ax.set_yscale('log')
 
     #GP bkgnd: finidng the mean and covaraicne 
-    mu_xBkg, cov_xBkg=y_bestFitGP(xBkg,yBkg,xerrBkg, yerrBkg, 3, kernelType="bkg")
+    mu_xBkg, cov_xBkg=y_bestFitGP(xBkg,yBkg,xerrBkg, yerrBkg,55, kernelType="bkg")
 
     # GP Signal: finind the mean of covariance 
-    mu_xSig, cov_xSig= y_bestFitGP(xBkg, yBkg, xerrBkg, yerrBkg, 30, kernelType="sig")
+    mu_xSig, cov_xSig= y_bestFitGP(xBkg, yBkg, xerrBkg, yerrBkg, 55, kernelType="sig")
 
 #finding the fit y values 
-    fit_mean=y_bestFit3Params(xBkgFit, yBkgFit, xerrBkgFit, 3)
+    fit_mean=y_bestFit3Params(xBkgFit, yBkgFit, xerrBkgFit, 55)
 
 #finding signifiance 
     GPSignificance, chi2=res_significance(yBkg, mu_xBkg)
@@ -63,11 +63,11 @@ def run_bkgnd():
     ext = args.output_file_extension
     title="test"
     with Canvas(f'%s{ext}'%title, "Fit Function", "GP bkgnd kernel", "GP signal+bkgnd kernel", 3) as can:
-        can.ax.errorbar(xBkg, yBkg, yerr=yerrBkg, fmt='.g') # drawing the points
+        can.ax.errorbar(xBkg, yBkg, yerr=yerrBkg, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
-        can.ax.plot(xBkg, mu_xBkg, '-g', label="unicorn") #drawing 
-        can.ax.plot(xBkgFit, fit_mean, '-r')
-        can.ax.plot(xBkg, mu_xSig, '-b', label="GP bkg kernel pony") 
+        can.ax.plot(xBkgFit, fit_mean, '-r', label="fit function")
+        can.ax.plot(xBkg, mu_xBkg, '-g', label="GP bkgnd kernel") #drawing 
+        can.ax.plot(xBkg, mu_xSig, '-b', label="GP signal kernel") 
         can.ax.legend(framealpha=0)
         can.ratio.stem(xBkgFit, fitSignificance, markerfmt='.', basefmt=' ')
         #can.ratio.stem(xBkgFit, testsig, markerfmt='.', basefmt=' ')
@@ -82,28 +82,5 @@ def run_bkgnd():
         can.save(title)
 
 #calculting with the signal kernel -
-'''
-    lnProbSig = logLike_gp_fitgpsig(xSig, ySig, xerrSig)
-    min_likelihoodSig, best_fitSig = fit_gp_fitgpsig_minuit(lnProbSig)
-
-    fit_pars = [best_fit[xSig] for xSig in FIT3_PARS]
-
-    Args=kargs+best_fitSig
-    kernel_Sig = get_kernelXtreme(**Arg)
-    print(kernel_Sig.get_parameter_names())
-    #making the kernel
-    gp_sig = george.GP(kernel_Sig, mean=Mean(fit_pars), fit_mean = True)
-    gp_sig.compute(xSig, yerrSig)
-    muSig, covSig = gp_sig.predict(ySig, t)
-    mu_xSig, cov_xSig = gp_Sig.predict(ySig, xSig)
-    #GP compute minimizes the log likelihood of the best_fit function
-    best = [best_fit[x] for x in FIT3_PARS]
-#calculating significance
-    signBkg = significance(mu_xBkg, yBkg, cov_xBkg, yerrBkg)
-
-
-    #sigFit = (fit_mean - y[initialCutPos:]) / np.sqrt(np.diag(cov_x[initialCutPos:]) + yerr[initialCutPos:]**2)
-    signSig =significance(mu_xSig, ySig, cov_xSig, yerrSig)
-'''
 if __name__ == '__main__':
     run_bkgnd()

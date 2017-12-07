@@ -8,7 +8,9 @@ from george.kernels import MyDijetKernelSimp#, ExpSquaredCenteredKernel#, ExpSqu
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
-from Libplotmeghan import getDataPoints,dataCut, y_bestFit3Params, y_bestFitGP, res_significance, significance
+from Libplotmeghan import getDataPoints,dataCut, y_bestFit3Params, y_bestFitGP, res_significance, significance, psuedoTest
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 
 def parse_args():
     parser = ArgumentParser(description=__doc__)
@@ -46,21 +48,18 @@ def run_bkgnd():
         can.ax.set_yscale('log')
 
     #GP bkgnd: finidng the mean and covaraicne 
-    mu_xBkg, cov_xBkg=y_bestFitGP(xBkg,yBkg,xerrBkg, yerrBkg, 3, kernelType="bkg")
+    mu_xBkg, cov_xBkg=y_bestFitGP(xBkg,yBkg,xerrBkg, yerrBkg, 55, kernelType="bkg")
 
     # GP Signal: finind the mean of covariance 
-    mu_xSig, cov_xSig= y_bestFitGP(xBkg, yBkg, xerrBkg, yerrBkg, 30, kernelType="sig")
+    mu_xSig, cov_xSig= y_bestFitGP(xBkg, yBkg, xerrBkg, yerrBkg, 55, kernelType="sig")
 
 #finding the fit y values 
-    fit_mean=y_bestFit3Params(xBkgFit, yBkgFit, xerrBkgFit, 3)
+    fit_mean=y_bestFit3Params(xBkgFit, yBkgFit, xerrBkgFit, 55)
 
 #finding signifiance 
     GPSignificance, chi2=res_significance(yBkg, mu_xBkg)
     fitSignificance, chi2fit=res_significance(yBkgFit, fit_mean)
     GPSigSignificance, chi2SignalFit=res_significance(yBkg, mu_xSig)
-
-
-
 #drawing the result
     ext = args.output_file_extension
     title="test"
@@ -72,7 +71,6 @@ def run_bkgnd():
         can.ax.plot(xBkg, mu_xSig, '-b', label="GP signel kernel") 
         can.ax.legend(framealpha=0)
         can.ratio.stem(xBkgFit, fitSignificance, markerfmt='.', basefmt=' ')
-        #can.ratio.stem(xBkgFit, testsig, markerfmt='.', basefmt=' ')
         can.ratio.set_ylabel("significance")
         can.ratio2.stem(xBkg, GPSignificance, markerfmt='.', basefmt=' ')
         can.ratio2.set_ylabel("significance")
@@ -83,29 +81,34 @@ def run_bkgnd():
         can.ratio3.axhline(0, linewidth=1, alpha=0.5)
         can.save(title)
 
-#calculting with the signal kernel -
-'''
-    lnProbSig = logLike_gp_fitgpsig(xSig, ySig, xerrSig)
-    min_likelihoodSig, best_fitSig = fit_gp_fitgpsig_minuit(lnProbSig)
+    fitChi2List, GPChi2List=psuedoTest(100, yBkgFit, fit_mean, yBkg, mu_xBkg)
+    print("fitChi2List", fitChi2List)
+    print("GPChi2List", GPChi2List)
+    #n, bins, patches = plt.hist(fitChi2List, 50, normed=1, facecolor='green', alpha=0.75)
+    #plt.plot(n, drawstyle="steps")
+    #plt.savefig("chi2.pdf")
 
-    fit_pars = [best_fit[xSig] for xSig in FIT3_PARS]
+    value, edges = np.histogram(fitChi2List)
+    print("value %r, edges %r" %(value, edges))
+    binCenters=(edges[1:]+edges[:-1])/2
+    valueGP, edgesGP = np.histogram(GPChi2List)
+    print("value %r, edges %r" %(valueGP, edgesGP))
+    binCentersGP=(edgesGP[1:]+edgesGP[:-1])/2
+    #plt.step(binCenters,value)
+    #plt.savefig("chi2.pdf")
 
-    Args=kargs+best_fitSig
-    kernel_Sig = get_kernelXtreme(**Arg)
-    print(kernel_Sig.get_parameter_names())
-    #making the kernel
-    gp_sig = george.GP(kernel_Sig, mean=Mean(fit_pars), fit_mean = True)
-    gp_sig.compute(xSig, yerrSig)
-    muSig, covSig = gp_sig.predict(ySig, t)
-    mu_xSig, cov_xSig = gp_Sig.predict(ySig, xSig)
-    #GP compute minimizes the log likelihood of the best_fit function
-    best = [best_fit[x] for x in FIT3_PARS]
-#calculating significance
-    signBkg = significance(mu_xBkg, yBkg, cov_xBkg, yerrBkg)
+    n=binCenters.size-1
+    nGP=binCentersGP.size-1
+    
+    title="chi2"
+    with Canvas(f'%s{ext}'%title, "Fit Function", "GP bkgnd kernel", "", 2) as can:
+        
+        can.ax.step(binCenters/n, value, label="Fit Function",where="mid")
+        can.ax.step(binCentersGP/nGP, valueGP, label="GP bkgnd", where="mid")
+        can.ax.legend(framealpha=0)
+        can.save(title)
 
 
-    #sigFit = (fit_mean - y[initialCutPos:]) / np.sqrt(np.diag(cov_x[initialCutPos:]) + yerr[initialCutPos:]**2)
-    signSig =significance(mu_xSig, ySig, cov_xSig, yerrSig)
-'''
+
 if __name__ == '__main__':
     run_bkgnd()
