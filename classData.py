@@ -8,7 +8,7 @@ from george.kernels import MyDijetKernelSimp#, ExpSquaredCenteredKernel#, ExpSqu
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
-from Libplotmeghan import getDataPoints,dataCut, y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff
+from Libplotmeghan import getDataPoints,dataCut, removeZeros,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff
 
 dataFileHistTemplate='MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1'
 officialFitHistTemplate='basicBkgFrom4ParamFit'
@@ -34,6 +34,11 @@ class dataSet: # each class treats a type of data set
         #(self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit)=(self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit)
         self.xOffFit=self.xRawOffFit
         self.yOffFit=self.yRawOffFit
+        self.xerrOffFit = self.xerrRawOffFit
+        self.yerrOffFit = self.yerrRawOffFit
+        #removing the zeros
+        self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit=removeZeros(self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit)
+
         # make an evently spaced x
         t = np.linspace(np.min(self.xData), np.max(self.xData), 500) ##Is this only used in drawing?
 
@@ -42,7 +47,7 @@ class dataSet: # each class treats a type of data set
         gPBkgKernelFitDone=False
         gPSigPlusBkgKernelFitDone=False
 
-  #EXECUTION
+  #EXECUTIOi
     def simpleFit(self, trial=1):
         """Execute simple fit """
         simpleFitDone=True
@@ -89,6 +94,7 @@ class dataSet: # each class treats a type of data set
 
     def printOfficialFit(self):
         print("-----------------Testing Official fit output--------------------")
+        print("xFit: ", self.xFit_officialFit)
         print("yFit: ", self.yFit_officialFit)
         print("significance", self.significance_officialFit)
 
@@ -96,10 +102,13 @@ class dataSet: # each class treats a type of data set
         self.simpleFit()
         self.gPBkgKernelFit()
         self.gPSigPlusBkgKernelFit()
+        self.officialFit()
         if (print==True):
             self.printSimpleFit()
             self.printGPBkgKernelFit()
             self.printGPSigPlusBkgKernelFit()
+            self.printOfficialFit()
+
     
 def y_SignalData(signalBkgDataSet, bkgDataSet):
     if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
@@ -110,7 +119,10 @@ def y_SignalData(signalBkgDataSet, bkgDataSet):
         print("ySig", ySig)
         return ySigData
 
-def y_SignalGPFit(sigPlusBkgFit, bkgFit):
+def y_SignalGPSubtractionFit(sigPlusBkgFit, bkgFit):
+    pass
+
+def y_signalGaussianFit
     pass
 
 
@@ -149,6 +161,12 @@ if __name__=="__main__":
     bkgndData.printGPBkgKernelFit()
     bkgndData.gPSigPlusBkgKernelFit()
     bkgndData.printGPSigPlusBkgKernelFit()
+
+    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
+    print("ySignalData: ", ySignalData)
+
+## drawing stuff
+
 
 
 ##    def __init__(self, xMinData, xMaxData, xMinSimpleFit, xMaxSimpleFit, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate):
