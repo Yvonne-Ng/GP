@@ -74,7 +74,7 @@ def run_sig():
     ymuGP_KernBkg_SB, covGP_KernBkg_SB, bestFitSB=y_bestFitGP(xSB,ySB,xerrSB, yerrSB,3, kernelType="bkg")
 
     # data SB, kernel: GP Signal: finind the mean of covariance 
-    ymuGP_KernBG_SB, cov_xSig, bestFitSig= y_bestFitGP(xSB, ySB, xerrSB, yerrSB, 100, kernelType="sig")
+    ymuGP_KernBG_SB, cov_xSig, bestFitSig= y_bestFitGP(xSB, ySB, xerrSB, yerrSB, 1, kernelType="sig")
 
     #Signal only fit
     ySigFit= ymuGP_KernBG_SB-ymuGP_KernBkg_SB
@@ -87,10 +87,9 @@ def run_sig():
     hyperParams=kargs.values()
     print("hyperParams: ",hyperParams)
 # Finding significance 
-    MAP_GP, MAP_sig, MAP_bkg=runGP_SplusB(ySB, xSB, xerrSB,xSBOffFit, xerrOffFit, hyperParams)
+    MAP_GP, MAP_sig, MAP_bkg=runGP_SplusB(ySB, xSB, xerrSB,xSBFit, xerrSBFit, hyperParams)
     print("MAP_bkg: ", MAP_bkg);
     print("MAP_sig: ", MAP_sig);
-      #  MAP_GP, MAP_bkg, MAP_sig = runGP_SplusB(ydata, xtoy, xtoyerr, xbins, xerrs, hyperParams)
 
 
 #finding signifiance 

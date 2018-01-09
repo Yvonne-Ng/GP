@@ -81,7 +81,7 @@ def run_bkgnd():
         #can.ax.plot(xBkgFit, fit_mean, '-r', label="fit function")
         can.ax.plot(xFit, yFit, '-r', label="fit function official")
         can.ax.plot(xBkg, mu_xBkg, '-g', label="GP bkg kernel") #drawing 
-        can.ax.plot(xBkg, mu_xSig, '-b', label="GP signel kernel") 
+        can.ax.plot(xBkg, mu_xSig, '-b', label="GP signal kernel") 
         can.ax.legend(framealpha=0)
         can.ratio.stem(xFit, FitSigFromOff, markerfmt='.', basefmt=' ')
         can.ratio.set_ylabel("significance")

@@ -131,17 +131,30 @@ class dataSet: # each class treats a type of data set
             self.printGPSigPlusBkgKernelFit()
             self.printOfficialFit()
 
-#class signalDataSet():
-#    def__init__(s
+class signalDataSet():
+    def __init__(signalBkgDataSet, bkgDataSet): 
+        #make sure the size of both data matches 
+        # finding the raw data points
+        if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
+            print("Error, xBkg and xBkgbk value are different")
+            return  1
+        else :
+            self.ySigData = signalBkgDataSet.yData-bkgDataSet.yData
+        #GP subtraction fit 
+        self.yGPSubtractionFit =sigBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
+        self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
+        #Gaussian Fit
+        p_initial = [1.0, 0.0, 0.1, 0.0]
+        popt, pcov = curve_fit(gauss, signalBkgDataSet.xData, ySignalData, p0=p_initial, sigma=signalBkgDataSet.yerrData)
+        self.yGaussianFit=gauss(xData, *popt)
+        self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
+        # Reconstruction 
+        K2 = kernel2.get_value(np.atleast_2d(xtoy).T)
+        mu2 = np.dot(K2, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr))) 
+
+
     
 def y_signalData(signalBkgDataSet, bkgDataSet):
-    if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
-        print("Error, xBkg and xBkgbk value are different")
-        return  1
-    else :
-        ySigData = signalBkgDataSet.yData-bkgDataSet.yData
-        print("xData", signalBkgDataSet.xData)
-        print("xSignal", signalBkgDataSet.xOffFit)
         return ySigData
 
 def y_signalGPSubtractionFit(signalBkgDataSet, doPrint=False):
