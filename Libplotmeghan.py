@@ -17,6 +17,21 @@ FIT3_PARS = ['p0','p1','p2']
 FIT4_PARS = ['p0', 'p1', 'p2','p3']
 
 #General Functions
+def removeZeros(xSet,ySet, xerrSet, yerrSet):
+    indice_yNot0=[i for i, y in enumerate(ySet) if y!=0]
+    newXSet=[]
+    newYSet=[]
+    newXerrSet=[]
+    newYerrSet=[]
+    for i in range (len(xSet)):
+        if i in indice_yNot0:
+            newXSet.append(xSet[i])
+            newYSet.append(ySet[i])
+            newXerrSet.append(xerrSet[i])
+            newYerrSet.append(yerrSet[i])
+    return newXSet, newYSet, newXerrSet, newYerrSet
+    
+
 def dataCut(xMin, xMax, yMin, x, y, xerr, yerr):
     valid_x = (x > xMin) & (x < xMax)
     valid_y = y > yMin
