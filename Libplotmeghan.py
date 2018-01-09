@@ -13,10 +13,22 @@ import scipy.special as ssp
 import inspect
 import math
 
+import random
+
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
 FIT3_PARS = ['p0','p1','p2']
 FIT4_PARS = ['p0', 'p1', 'p2','p3']
 
-#General Functions
+#General Function
+def gauss(x, *p):
+    a, b, c, d = p
+    y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.)) + d
+
+    return y
+
 def removeZeros(xSet,ySet, xerrSet, yerrSet):
     indice_yNot0=[i for i, y in enumerate(ySet) if y!=0]
     newXSet=[]
@@ -78,6 +90,13 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
     zvals=np.array(zvals)
 
     return zvals, chi2
+#making Toys
+def makeToys(dataset, nPseudo=1000, lumi = 3.6):
+    toys = []
+    for n in range(nPseudo):
+        pseudo = np.random.poisson(dataset*lumi/lumi)
+        toys.append(pseudo)
+    return toys
 
 #estimating the mean for GP cclculations
 class Mean():
@@ -587,7 +606,7 @@ def y_bestFitGP(x,y,xerr,yerr, likelihoodTrial, kernelType="bkg"):
         kargs = {x:y for x, y in best_fit.items() if x not in FIT3_PARS}
         kernel = get_kernel(**kargs)
         print(kernel.get_parameter_names())
-
+#
     elif kernelType =="sig":
         lnProb = logLike_minuit_sig(x, y, xerr)
         #lnProb = logLike_gp_fitgpsig(x, y, xerr)
@@ -595,7 +614,7 @@ def y_bestFitGP(x,y,xerr,yerr, likelihoodTrial, kernelType="bkg"):
 
 
         #print ("in run sig lnprob:", lnProb)
-        print("signal lnprob: ", lnProb(9424207558.974304, 23.36140499375173, 212320.71588945185, 0.934086263121374, 677.3782035685553,5.835978239102488, 19.11598702209463, -2.3008859313936085))
+        #print("signal lnprob: ", lnProb(9424207558.974304, 23.36140499375173, 212320.71588945185, 0.934086263121374, 677.3782035685553,5.835978239102488, 19.11598702209463, -2.3008859313936085))
 
         min_likelihood, best_fit = fit_gpSig_minuit(likelihoodTrial, lnProb, (9424207558.974304, 23.36140499375173, 212320.71588945185, 0.934086263121374, 677.3782035685553,5.835978239102488, 19.11598702209463, -2.3008859313936085))
         print ("min likelihood:", min_likelihood)
@@ -638,22 +657,41 @@ def psuedoTest(pseudoTestNum, yBkgFit, yErrBkgFit,fit_mean, yBkg, yErrBkg,mu_xBk
     return  chi2FitList, chi2GPList
 
 
+##def runGP_SplusB(ys, xs_train, xerr_train, xs_fit, xerr_fit, hyperParams):
+##    Amp, decay,  lengthscale, power, sub, p0, p1, p2, A, mass, tau = hyperParams
+##    kernel_sig = get_kernel_SigOnly(A, mass, tau)
+##    kernel_bkg = get_kernel(Amp, decay, lengthscale, power, sub)
+##    
+##
+##    kernel = kernel_bkg + kernel_sig
+##    gp = george.GP(kernel)
+##    gp.compute(xs_train, np.sqrt(ys))
+##
+##    MAP_GP, cov_GP = gp.predict( ys - model_3param(xs_train, (p0, p1, p2), xerr_train), xs_fit)
+##    MAP_GP = MAP_GP + model_3param(xs_fit,(p0, p1, p2), xerr_fit)
+##    
+##    K1 = kernel_bkg.get_value(np.atleast_2d(xs_train).T)
+##    MAP_sig = np.dot(K1, gp.solver.apply_inverse(ys - model_3param(xs_train,(p0, p1, p2), xerr_train))) + model_3param( xs_train, (p0, p1, p2), xerr_train)
+##    K2 = kernel_sig.get_value(np.atleast_2d(xs_train).T)
+##    MAP_bkg = np.dot(K2, gp.solver.apply_inverse(ys-model_3param( xs_train, (p0, p1, p2),xerr_train)))
+##    
+##    return MAP_GP, MAP_sig, MAP_bkg
+
 def runGP_SplusB(ys, xs_train, xerr_train, xs_fit, xerr_fit, hyperParams):
     Amp, decay,  lengthscale, power, sub, p0, p1, p2, A, mass, tau = hyperParams
+
     kernel_sig = get_kernel_SigOnly(A, mass, tau)
     kernel_bkg = get_kernel(Amp, decay, lengthscale, power, sub)
-    
-
     kernel = kernel_bkg + kernel_sig
     gp = george.GP(kernel)
     gp.compute(xs_train, np.sqrt(ys))
 
     MAP_GP, cov_GP = gp.predict( ys - model_3param(xs_train, (p0, p1, p2), xerr_train), xs_fit)
-    MAP_GP = MAP_GP + model_3param(xs_fit,(p0, p1, p2), xerr_fit)
+    MAP_GP = MAP_GP + model_3param(xs_fit,(p0,p1,p2),xerr_fit)
     
     K1 = kernel_bkg.get_value(np.atleast_2d(xs_train).T)
-    MAP_sig = np.dot(K1, gp.solver.apply_inverse(ys - model_3param(xs_train,(p0, p1, p2), xerr_train))) + model_3param( xs_train, (p0, p1, p2), xerr_train)
+    MAP_sig = np.dot(K1, gp.solver.apply_inverse(ys - model_3param(xs_train,(p0,p1,p2),xerr_train))) + model_3param(xs_train,(p0,p1, p2), xerr_train)
     K2 = kernel_sig.get_value(np.atleast_2d(xs_train).T)
-    MAP_bkg = np.dot(K2, gp.solver.apply_inverse(ys-model_3param( xs_train, (p0, p1, p2),xerr_train)))
+    MAP_bkg = np.dot(K2, gp.solver.apply_inverse(ys-model_3param(xs_train, (p0,p1, p2), xerr_train)))
     
     return MAP_GP, MAP_sig, MAP_bkg
