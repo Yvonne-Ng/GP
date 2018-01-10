@@ -8,15 +8,24 @@ from george.kernels import MyDijetKernelSimp#, ExpSquaredCenteredKernel#, ExpSqu
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
-from Libplotmeghan import getDataPoints,dataCut, removeZeros,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gauss
 import random
+
+#importing functions from Libplotmeghan
+from Libplotmeghan import getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian
+#import function from drawStuff
+from drawStuff import drawSignalGaussianFit, drawSignalSubtractionFit, drawFitDataSet, drawAllSignalFit
 
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
+#for the gaussian fit 
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+
 dataFileHistTemplate='MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1'
 officialFitHistTemplate='basicBkgFrom4ParamFit'
+FIT3_PARS = ['p0','p1','p2']
 
 class dataSet: # each class treats a type of data set
     """each dataSet class  makes predictions using 
@@ -27,7 +36,7 @@ class dataSet: # each class treats a type of data set
         5.SWIFT (Coming soon) """
 
     def __init__(self, xMinData=None, xMaxData=None, xMinSimpleFit=None, xMaxSimpleFit=None, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate, toy=False, originalSet=None):
-        if toy=False:
+        if toy==False:
         #Getting Data points
             self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw = getDataPoints(dataFile, dataFileDir, dataFileHist)
             self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit = getDataPoints(officialFitFile, officialFitDir, officialFitHist)
@@ -44,16 +53,23 @@ class dataSet: # each class treats a type of data set
             self.yerrOffFit = self.yerrRawOffFit
             #removing the zeros
             self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit=removeZeros(self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit)
+            #
 
         else: # toy=True
-            self.xData, self.x_simpleFit= originalSet.xData
-            self.yData, self.y_simpleFit= originalSet.yData
-            self.xerrData, self.xerr_simpleFit = originalSet.xerrData
-            self.yerrData, self.yerr_simpleFit = originalSet.yerrData
+            self.xData=self.x_simpleFit= makeToys(originalSet.xData, lumi=34.5)
+            self.yData=self.y_simpleFit= makeToys(originalSet.yData, lumi=34.5)
+            self.xerrData=self.xerr_simpleFit = makeToys(originalSet.xerrData, lumi=34.5)
+            self.yerrData=self.yerr_simpleFit = makeToys(originalSet.yerrData, lumi=34.5)
             #no official fit for toys #add from 
 
         # make an evently spaced x
-        t = np.linspace(np.min(self.xData), np.max(self.xData), 500) ##Is this only used in drawing?
+        self.x_gPPred = np.linspace(np.min(self.xData), np.max(self.xData), 500) ## this is for x_GPpred
+
+        self.xerr_gPPred=self.x_gPPred[1:]-self.x_gPPred[:-1]
+        print("size of xerr_gPPred: ",np.size(self.xerr_gPPred))
+        self.xerr_gPPred=np.append(self.xerr_gPPred, self.xerr_gPPred[-1])
+        print("size of xerr_gPPred: ",np.size(self.xerr_gPPred))
+
 
         # boolean counter to see if cetain things are done 
         simpleFitDone=False
@@ -83,10 +99,10 @@ class dataSet: # each class treats a type of data set
         print("significance: ", self.significance_simpleFit)
 
 
-    def gPBkgKernelFit(self, trial=1, useBkgKernelResult="", useSimpleFitResult=False): 
+    def gPBkgKernelFit(self, trial=100, useBkgDataResult="", useSimpleFitResult=False,bkgDataHyperParams=None): 
         """Execute GPBkgKernel Fit"""
         gPBkgKernelFitDone=True 
-        self.y_GPBkgKernelFit, self.cov_GPBkgKernelFit, self.bestFit_GPBkgKernelFit=y_bestFitGP(self.xData,self.yData,self.xerrData, self.yerrData,trial, kernelType="bkg")
+        self.y_GPBkgKernelFit, self.cov_GPBkgKernelFit, self.bestFit_GPBkgKernelFit=y_bestFitGP(self.xData,self.yData,self.xerrData, self.yerrData,trial, kernelType="bkg", bkgDataParams=None) #bkgDataHyperParam will be None unless set when the function is called 
         self.significance_GPBkgKernelFit, self.chi2_GPBkgKernelFit=res_significance(self.yData, self.y_GPBkgKernelFit)
 
     def printGPBkgKernelFit(self):
@@ -94,7 +110,10 @@ class dataSet: # each class treats a type of data set
         print("yFit: ", self.y_GPBkgKernelFit)
         print("significance: ", self.significance_GPBkgKernelFit)
 
-    def gPSigPlusBkgKernelFit(self, trial=1):
+    def getGPBkgKernelFitParams(self):
+        return self.bestFit_GPBkgKernelFit
+
+    def gPSigPlusBkgKernelFit(self, trial=100):
         gPSigPlusBkgKernelFitDone=True
         """Execute GP Signal plus bkg fit """
         self.y_GPSigPlusBkgKernelFit, self.cov_GPSigPlusBkgKernelFit, self.bestFit_GPSigPlusBkgKernelFit=y_bestFitGP(self.xData,self.yData,self.xerrData, self.yerrData,trial, kernelType="sig")
@@ -104,6 +123,13 @@ class dataSet: # each class treats a type of data set
         print("-------------testing GP signal plus bkgnd kernel fit ------------")
         print("yFit: ", self.y_GPSigPlusBkgKernelFit)
         print("significance: ", self.significance_GPSigPlusBkgKernelFit)
+    def yGPSignalReconstructed_dataSBMinusB(self, doPrint=False):
+        print("self.bestFit_GPSigPlusBkgKernelFit", self.bestFit_GPSigPlusBkgKernelFit)
+        self.MAP_GP, self.MAP_sig, self.MAP_bkg=runGP_SplusB(self.yData, self.xData, self.xerrData,self.x_gPPred, self.xerr_gPPred, self.bestFit_GPSigPlusBkgKernelFit.values())
+        if doPrint:
+            print("MAP_GP: ", self.MAP_GP)
+            print("MAP_sig: ", self.MAP_sig)
+            print("MAP_bkg: ", self.MAP_bkg)
 
     def officialFit(self, doprint=False):
         """official Fit """
@@ -120,10 +146,11 @@ class dataSet: # each class treats a type of data set
         print("yFit: ", self.yFit_officialFit)
         print("significance", self.significance_officialFit)
 
-    def fitAll(self, print=False):
-        self.simpleFit()
-        self.gPBkgKernelFit()
-        self.gPSigPlusBkgKernelFit()
+    def fitAll(self, print=False, trialAll=100,bkgDataParams=None):
+        self.simpleFit(trial=trialAll)
+        self.gPBkgKernelFit(trial=trialAll,bkgDataHyperParams=bkgDataParams)
+        self.gPSigPlusBkgKernelFit(trial=trialAll)
+        self.yGPSignalReconstructed_dataSBMinusB(doPrint=True)
         self.officialFit()
         if (print==True):
             self.printSimpleFit()
@@ -132,7 +159,7 @@ class dataSet: # each class treats a type of data set
             self.printOfficialFit()
 
 class signalDataSet():
-    def __init__(signalBkgDataSet, bkgDataSet): 
+    def __init__(self,signalBkgDataSet, bkgDataSet): 
         #make sure the size of both data matches 
         # finding the raw data points
         if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
@@ -140,47 +167,66 @@ class signalDataSet():
             return  1
         else :
             self.ySigData = signalBkgDataSet.yData-bkgDataSet.yData
+            self.xSigData = signalBkgDataSet.xData
         #GP subtraction fit 
-        self.yGPSubtractionFit =sigBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
+        self.yGPSubtractionFit =signalBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
         self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
         #Gaussian Fit
-        p_initial = [1.0, 0.0, 0.1, 0.0]
-        popt, pcov = curve_fit(gauss, signalBkgDataSet.xData, ySignalData, p0=p_initial, sigma=signalBkgDataSet.yerrData)
-        self.yGaussianFit=gauss(xData, *popt)
+        #method 1 # it
+        #p_initial = [100, 500, 1, 0.0]
+        #popt, pcov = curve_fit(gauss, self.xSigData, self.ySigData, p0=p_initial)
+        #self.yGaussianFit=gauss(signalBkgDataSet.xData, *popt)
+        #self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
+        #method 2
+        #need to have a very good initial guess in order to have the gaussian converge
+        peakValue=self.ySigData.max()
+        mean = self.xSigData[self.ySigData.argmax()]
+        sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0] 
+        init_vals = [peakValue, mean, sigma] 
+        best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
+        self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
         self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
+        #print best_vals
+    def print(self):
+        print("xSigData: ",self.xSigData)
+        print("ySigData: ",self.ySigData)
+        print ("GP subtraction fit y : ", self.yGPSubtractionFit )
+        print ("GP siginificaance : ", self.gpSubtractionSignificance)
+        print("Gaussian Fit : ", self.yGaussianFit)
+        print ("Gaussian significance: ", self.gaussianFitSignificance)
+
+        
         # Reconstruction 
-        K2 = kernel2.get_value(np.atleast_2d(xtoy).T)
-        mu2 = np.dot(K2, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr))) 
+        #fit range needs to be different from train range 
+        #self.runGP_SplusB(self.ySigData, self.xSigData, self.xerr
 
-
-    
-def y_signalData(signalBkgDataSet, bkgDataSet):
-        return ySigData
-
-def y_signalGPSubtractionFit(signalBkgDataSet, doPrint=False):
-    Fit =sigBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
-    if doPrint:
-        print (" y_signalalGPSubtractionFit: ", Fit)
-    return 
-
-def y_signalGaussianFit(signalBkgDataSet, ySignalData, doPrint):
-    p_initial = [1.0, 0.0, 0.1, 0.0]
-    popt, pcov = curve_fit(gauss, signalBkgDataSet.xData, ySignalData, p0=p_initial, sigma=signalBkgDataSet.yerrData)
-    Fit=gauss(xData, *popt)
-    if doPrint:
-        print("y signal Gaussian Fit: ", Fit)
-    return Fit
-
+#def y_signalData(signalBkgDataSet, bkgDataSet):
+#
+#
+#def y_signalGPSubtractionFit(signalBkgDataSet, doPrint=False):
+#    Fit =sigBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
+#    if doPrint:
+#        print (" y_signalalGPSubtractionFit: ", Fit)
+#    return 
+#
+#def y_signalGaussianFit(signalBkgDataSet, ySignalData, doPrint):
+#    p_initial = [1.0, 0.0, 0.1, 0.0]
+#    popt, pcov = curve_fit(gauss, signalBkgDataSet.xData, ySignalData, p0=p_initial, sigma=signalBkgDataSet.yerrData)
+#    Fit=gauss(xData, *popt)
+#    if doPrint:
+#        print("y signal Gaussian Fit: ", Fit)
+#    return Fit
 
 #making toys
-    def makeListofToySet(dataSetOriginal, nToy=1):
-        toyDataSetList=[]
-        for i in range(nToys):
-            toyDataSetList.append(dataSet(toy=True, dataSetOriginal)) 
-        return toyDataSetList
+def makeToyDataSetList(dataSetOriginal, nToy=1):
+    toyDataSetList=[]
+    for i in range(nToy):
+        toyDataSetList.append(dataSet(toy=True, originalSet= dataSetOriginal)) 
+    return toyDataSetList
 
-def yGPSignalReconstructed_dataSBMinusB(bkgndData):
-    pass
+#def yGPSignalReconstructed_dataSBMinusB(dataSet):
+#    MAP_GP, MAP_sig, MAP_bkg=runGP_SplusB(dataSet.yData, data.xData, self.xerrData,self.x_gPPred, self.xerr_gPPred, hyperParams)
+#    
         
 if __name__=="__main__":        
     print("----------------------")
@@ -192,24 +238,29 @@ if __name__=="__main__":
     print("----------------------")
     
 #signal plus bkgnd Data
+    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    bkgndData.fitAll(print=True, trialAll=100)
+
+#signal plus bkgnd Data
     signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-    signalInjectedBkgndData.fitAll(print=True)
+    signalInjectedBkgndData.fitAll(print=True, trialAll=100, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
 
 #making a list of toys for the signal plus bkgnd Data 
-    signalInjectedBkgndToy=makeToyList(signalInjectedBkgndData, 100)
+    signalInjectedBkgndToy=makeToyDataSetList(signalInjectedBkgndData, 100)
 
          
-#signal plus bkgnd Data
-    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-    bkgndData.fitAll(print=True)
-
 ##signalData
-    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
-    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
-    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
-    
-
+#    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
+#    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
+#    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
+    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
+    signalData1.print()
+##test ToyList
 ## drawing stuff
+
+    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
+    drawAllSignalFit(signalInjectedBkgndData, signalData1)
+    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
 
 
 
