@@ -39,10 +39,12 @@ class dataSet: # each class treats a type of data set
         if toy==False:
         #Getting Data points
             self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw = getDataPoints(dataFile, dataFileDir, dataFileHist)
+            print("print xDataRaw:", self.xRaw)
             self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit = getDataPoints(officialFitFile, officialFitDir, officialFitHist)
         #Cutting out the desired range 
             #Data file (For GP Fitting)
             self.xData, self.yData, self.xerrData, self.yerrData = dataCut(xMinData, xMaxData, 0, self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw)  
+            print("print xData:", self.xData)
             #Simple fit range 
             self.x_simpleFit, self.y_simpleFit, self.xerr_simpleFit, self.yerr_simpleFit= dataCut(xMinSimpleFit, xMaxSimpleFit, 0, self.xRaw, self.yRaw,self.xerrRaw,self.yerrRaw) # for fit function 
             #Official Fit (Already cut out in root file )
@@ -239,29 +241,30 @@ if __name__=="__main__":
     
 #signal plus bkgnd Data
     bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-    bkgndData.fitAll(print=True, trialAll=100)
+    bkgndData.fitAll(print=True, trialAll=1)
 
 #signal plus bkgnd Data
-    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-    signalInjectedBkgndData.fitAll(print=True, trialAll=100, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+#    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
+#    signalInjectedBkgndData.fitAll(print=True, trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+#
+##making a list of toys for the signal plus bkgnd Data 
+#    signalInjectedBkgndToy=makeToyDataSetList(signalInjectedBkgndData, 1)
+#
+#         
+###signalData
+##    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
+##    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
+##    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
+#    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
+#    signalData1.print()
+###test ToyList
+### drawing stuff
+#
+#    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
+#    drawAllSignalFit(signalInjectedBkgndData, signalData1)
+#    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
+    drawFitDataSet(bkgndData, "Bkg", saveTxt=True, saveTxtDir="txt/BkgData")
 
-#making a list of toys for the signal plus bkgnd Data 
-    signalInjectedBkgndToy=makeToyDataSetList(signalInjectedBkgndData, 100)
-
-         
-##signalData
-#    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
-#    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
-#    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
-    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
-    signalData1.print()
-##test ToyList
-## drawing stuff
-
-    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
-    drawAllSignalFit(signalInjectedBkgndData, signalData1)
-    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
-
-
-
-##    def __init__(self, xMinData, xMaxData, xMinSimpleFit, xMaxSimpleFit, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate):
+#
+#
+###    def __init__(self, xMinData, xMaxData, xMinSimpleFit, xMaxSimpleFit, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate):
