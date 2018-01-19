@@ -514,7 +514,7 @@ class logLike_UA2:
         except:
             return np.inf
 
-def fit_UA2(num,lnprob, Print=True):
+def fit_UA2(num,lnprob,initParam=None, initRange=None, Print=True):
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
     for i in range(num):
@@ -522,10 +522,14 @@ def fit_UA2(num,lnprob, Print=True):
        # init1 = 53.
        # init2 = -1.199
        # init3 = 1
-        init0 = 9.6
-        init1 = -1.67
-        init2 = 56.87
-        init3 = -75.877
+        if initParam:
+            
+    #defalut value 
+        else:
+            init0 = 9.6
+            init1 = -1.67
+            init2 = 56.87
+            init3 = -75.877
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
                   p0 = init0, p1 = init1, p2 = init2, p3= init3,
                   error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
