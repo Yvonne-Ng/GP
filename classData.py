@@ -36,6 +36,9 @@ class dataSet: # each class treats a type of data set
         5.SWIFT (Coming soon) """
 
     def __init__(self, xMinData=None, xMaxData=None, xMinSimpleFit=None, xMaxSimpleFit=None, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate, toy=False, originalSet=None):
+        self.xMinData=xMinData
+        self.xMaxData=xMaxData
+
         if toy==False:
         #Getting Data points
             self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw = getDataPoints(dataFile, dataFileDir, dataFileHist)
@@ -78,6 +81,30 @@ class dataSet: # each class treats a type of data set
         gPBkgKernelFitDone=False
         gPSigPlusBkgKernelFitDone=False
         
+######   initialization of points
+    #-----Getting Data points
+    def initData(self):
+        # data points 
+        self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw = getDataPoints(dataFile, dataFileDir, dataFileHist)
+        self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit = getDataPoints(officialFitFile, officialFitDir, officialFitHist)
+
+
+    #processing: Cutting out the desired range # put this in the Fit part 
+        self.xData, self.yData, self.xerrData, self.yerrData = dataCut(xMinData, xMaxData, 0, self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw)  
+        #Simple fit range 
+        self.x_simpleFit, self.y_simpleFit, self.xerr_simpleFit, self.yerr_simpleFit= dataCut(xMinSimpleFit, xMaxSimpleFit, 0, self.xRaw, self.yRaw,self.xerrRaw,self.yerrRaw) # for fit function 
+        #Official Fit (Already cut out in root file )
+        #(self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit)=(self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit)
+        self.xOffFit=self.xRawOffFit
+        self.yOffFit=self.yRawOffFit
+        self.xerrOffFit = self.xerrRawOffFit
+        self.yerrOffFit = self.yerrRawOffFit
+        #removing the zeros
+        self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit=removeZeros(self.xOffFit, self.yOffFit, self.xerrOffFit, self.yerrOffFit)
+        #
+
+    def initToy(self):
+        pass
   # Getting stuff
     def get_simpleFit_chi2(self):
         return self.chi2_simpleFit
