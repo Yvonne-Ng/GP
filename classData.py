@@ -228,25 +228,28 @@ if __name__=="__main__":
     bkgndData.fitAll( trialAll=1)
 
 #signal plus bkgnd Data
-#    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-#    signalInjectedBkgndData.fitAll(print=True, trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
-#
-##making a list of toys for the signal plus bkgnd Data 
-#    signalInjectedBkgndToy=makeToyDataSetList(signalInjectedBkgndData, 1)
-#
-#         
-###signalData
-##    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
-##    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
-##    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
-#    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
-#    signalData1.print()
-###test ToyList
-### drawing stuff
-#
-#    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
-#    drawAllSignalFit(signalInjectedBkgndData, signalData1)
-#    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
+    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
+    signalInjectedBkgndData.fitAll(print=True, trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+
+#making a list of toys for the signal plus bkgnd Data 
+#TODO WHy?
+#    signalInjectedBkgndToyList=makeToyDataSetList(signalInjectedBkgndData, 1)
+
+    bkgDataToyList=makeToyDataSetList(bkgndData, 100)
+
+         
+##signalData
+#    ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
+#    ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
+#    ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
+    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
+    signalData1.print()
+##test ToyList
+## drawing stuff
+
+    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
+    drawAllSignalFit(signalInjectedBkgndData, signalData1)
+    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
     drawFitDataSet(bkgndData, "Bkg", saveTxt=True, saveTxtDir="txt/BkgData")
 
 #
