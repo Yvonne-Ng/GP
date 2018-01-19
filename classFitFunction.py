@@ -43,12 +43,12 @@ class FitFunction():
 
 
     def grabNProcessData(self,xMin, xMax, xRaw, yRaw, xerrRaw, yerrRaw):
-        grabbedData=True
-        self.xData, self.yData, self.xerrData, self.yerrData=getDataPoints(xMin, xMax, xRaw, yRaw, xerrRaw, yerrRaw)
+        self.grabbedData=True
+        self.xData, self.yData, self.xerrData, self.yerrData=dataCut(xMin, xMax, 0., xRaw, yRaw,xerrRaw, yerrRaw)
     
     #-------Running the Fit 
     def doFit(self):
-        if grabbedData==True:
+        if self.grabbedData==True:
             if self.functionChoice==0:
                 return self.UAFitFunction()
             if self.functionChoice==1:
@@ -60,9 +60,9 @@ class FitFunction():
     #-----different choices of fitFunctions
     def UAFitFunction(self):
         #----3 param fit function in a different way
-        lnProbUA2 = logLike_UA2(self.xData,self.yData,self.xErrData)
-        minimumLLH, best_fit_params = fit_UA2(trial, lnProbUA2)
-        fit_mean = model_UA2(self.xData, best_fit_params, self.xErrData)
+        lnProbUA2 = logLike_UA2(self.xData,self.yData,self.xerrData)
+        minimumLLH, best_fit_params = fit_UA2(self.trial, lnProbUA2)
+        fit_mean = model_UA2(self.xData, best_fit_params, self.xerrData)
         self.bestFitParams=best_fit_params
         return fit_mean 
 
@@ -80,9 +80,6 @@ if __name__=="__main__":
     bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     UAFitBkgndMC=FitFunction(0, trial=100)
     #def grabNProcessData(self,xMin, xMax, xRaw, yRaw, xerrRaw, yerrRaw):
-    UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgnd.xData, bkgnd.yData, bkgnd.xerrData, yxerrData)
+    UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgndData.xData, bkgndData.yData, bkgndData.xerrData, bkgndData.yerrData)
     print(UAFitBkgndMC.doFit())
 #    def __init__(self, initFunctionChoice=0, initFitParam=(0,0,0,0), initRange[(0,0), (0,0), (0,0), (0,0)(0,0)], trial=100):
-
-
-        
