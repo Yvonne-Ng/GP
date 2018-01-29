@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from h5py import File
 import numpy as np
 import george
-from george.kernels import MyDijetKernelSimp,LocalGaussianKernel#, ExpSquared#, ExpSquaredCenteredKernel, ExpSquaredKernel
+from george.kernels import SignalKernel,MyDijetKernelSimp,LocalGaussianKernel#, ExpSquared#, ExpSquaredCenteredKernel, ExpSquaredKernel
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
@@ -89,11 +89,69 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
         else: zval = 0
             
         zvals.append(zval)
-        chi2 += ((nD - nB) ** 2 / abs(nB)) 
+        if ((nD - nB) ** 2 / abs(nD)) <2:
+            chi2 += ((nD - nB) ** 2 / abs(nD)) 
+        else :
+            chi2 += 2
+
+        print("bin: ", i, "nD: ", nD, "nB", nB)
+        print("((nD - nB) ** 2 / abs(nD))", ((nD - nB) ** 2 / abs(nD)) )
+
+    print("length of data: ", len(Data))
     #print("length of Zval:", len(zvals))
     zvals=np.array(zvals)
 
     return zvals, chi2
+
+def poissonPVal(d,b):
+    if (d>=b):
+        answer=ssp.gammainc(d,b)
+    else:
+        answer=1-ssp.gammainc(d+1,b)
+    print("poissonPVal: ", answer)
+    return answer
+
+def probToSigma(prob):
+    if (prob<0 and prob>1):
+        return "Yvonne ERROR, prob out of range in probToSigma"
+    valtouse = 1-2*prob
+    if (valtouse>-1 and valtouse<1) :
+        print("Yvonne Sigma:", math.sqrt(2.0)*ssp.erfinv(valtouse))
+        return math.sqrt(2.0)*ssp.erfinv(valtouse)
+    elif (valtouse==1): 
+        print("Yvonne Sigma:", 20)
+        return 20
+    else:
+        print("Yvonne Sigma:", 20)
+        return -20
+    
+def resSigYvonne(Data, Bkg, xData=None, xBkg=None):
+    resultResidual=[]
+    chi2Sum=0
+    for i in range(len(Data)):
+        d=Data[i]
+        b=Bkg[i]
+        chi2Sum=(d-b)**2+chi2Sum
+        #do I actually need berr
+        #berr
+        pVal=poissonPVal(d,b)
+        frac=probToSigma(pVal)
+        if (float(frac)>100): # if frac is too big
+            frac=20
+        if (float(frac)<0):
+            frac=0
+        if (d<b):
+            frac=frac*-1# what do you do with -frac??
+        resultResidual.append(frac)
+    chi2=float(chi2Sum)/len(Data)
+    print("chi2: ", chi2)
+    return resultResidual, chi2
+     
+
+
+
+
+
 #making Toys
 def makeToys(dataList, lumi = 3.6):
       return  np.random.poisson(dataList*lumi/lumi)
@@ -117,15 +175,23 @@ class Mean():
 
 def get_kernel(Amp, decay, length, power, sub): # getting the typical background kernel
     return Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
-def get_kernel_SigOnly(A, mass, tau):
-    return A* LocalGaussianKernel(mass, tau)
+#def get_kernel_SigOnly(A, mass, tau):
+#    return A* LocalGaussianKernel(mass, tau)
 
-def get_kernel_Xtreme(Amp, decay, length, power, sub, A, mass, tau): # getting the signal+bkgnd kernel
+def get_kernel_SigOnly(A, mass, tau,l):
+    return A* SignalKernel(mass, tau,l)
+#def get_kernel_Xtreme(Amp, decay, length, power, sub, A, mass, tau): # getting the signal+bkgnd kernel
+#    #kernelsig = Amp * ExpSquaredCenteredKernel(m=mass, t=tau)
+#    kernelsig= A* LocalGaussianKernel(mass, tau)
+#    kernelbkg = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
+#    return kernelsig+kernelbkg
+    #return kernelbkg
+def get_kernel_Xtreme(Amp, decay, length, power, sub, A, mass, tau,l): # getting the signal+bkgnd kernel
     #kernelsig = Amp * ExpSquaredCenteredKernel(m=mass, t=tau)
-    kernelsig= A* LocalGaussianKernel(mass, tau)
+    kernelsig= A* SignalKernel(mass, tau,l)
     kernelbkg = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
     return kernelsig+kernelbkg
-    #return kernelbkg
+
 def get_xy_pts(group):
     assert 'hist_type' in group.attrs
     vals = np.asarray(group['values'])
@@ -200,12 +266,9 @@ def fit_gp_minuit(num, lnprob):
                    error_p0 = 1e-2, error_p1 = 1e-2, error_p2 = 1e-2,
                    limit_Amp = bound('amp'),
                    limit_decay = (0.01, 1000),
-                   limit_length = (1, 1e8),
+                   limit_length = (100000, 1e8),
                    limit_power = (0.0001, 100),
                    limit_sub = (0.001, 1e6),
-                   #limit_p0 = bound('p0', neg=false),
-                   #limit_p1 = bound('p1', neg=true),
-                   #limit_p2 = bound('p2', neg=true))
                    limit_p0 = (-100,1000000),
                    limit_p1 = (-100,100),
                    limit_p2 = (-100,100))
@@ -239,6 +302,26 @@ class logLike_minuit_sig:
             return -gp.lnlikelihood(self.y, self.xerr)
         except:
             return np.inf
+
+class logLike_minuit_sigWithWindow:
+    def __init__(self, x, y, xerr):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+    def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0,l=0):
+        #kernel = get_kernel(Amp, decay, length, power, sub)
+        kernel1 = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
+        kernel2 = A * SignalKernel(mass, tau, l)
+        kernel = kernel1 + kernel2
+        #kernel=kernel1
+        mean = Mean((p0,p1,p2))
+        gp = george.GP(kernel, mean=mean, fit_mean = True)
+        try:
+            gp.compute(self.x, np.sqrt(self.y))
+            return -gp.lnlikelihood(self.y, self.xerr)
+        except:
+            return np.inf
+
 #####################3#
 #    def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0):
 #        #Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
@@ -281,15 +364,16 @@ def fit_gpSig_minuit(num, lnprob, initParams):
         ip0 =initParams[5] #*1.2*np.random.random() #guesses['p0']
         ip1 = initParams[6]#*1.2*np.random.random() #guesses['p1']
         ip2 = initParams[7]#*1.2*np.random.random() #guesses['p2']
-        iA = (2500000 *np.random.random())
-        itau = (50 * np.random.random())
-        iMass = (500 * np.random.random())
+        iA = (2500000000 *np.random.random())
+        itau = 50
+        iMass = 500
+        iL=(500*np.random.random())
 
         m = Minuit(lnprob, throw_nan = True, pedantic = True,
                    print_level = 0, errordef = 0.5,
                    Amp = iamp,decay = idecay, length = ilength,power = ipower,sub = isub,
                    p0 = ip0, p1 = ip1, p2 = ip2,
-                   A=iA, tau=itau, mass=iMass,
+                   A=iA, tau=itau, mass=iMass,l=iL,
                    error_Amp = 1e1,
                    error_decay = 1e1,
                    error_length = 1e1,
@@ -297,27 +381,19 @@ def fit_gpSig_minuit(num, lnprob, initParams):
                    error_sub = 1e1,
                    error_p0 = 1e-2, error_p1 = 1e-2, error_p2 = 1e-2,
                    error_A = 1e-2, error_tau = 1e-2, error_mass = 1e-2,
+                   error_l=1e-2,
                    limit_Amp = (initParams[0], initParams[0]*1.001),#bound('amp'),
                    limit_decay = (initParams[1], initParams[1]*1.001),
                    limit_length = (initParams[2], initParams[2]*1.001),
                    limit_power = (initParams[3], initParams[3]*1.001),
                    limit_sub = (initParams[4], initParams[4]*1.001),
-                   #limit_decay = (0.01, 1000),
-                   #limit_length = (1, 1e8),
-                   #limit_power = (0.0001, 100),
-                   #limit_sub = (0.001, 1e6),
-                   #limit_p0 = bound('p0', neg=false),
-                   #limit_p1 = bound('p1', neg=true),
-                   #limit_p2 = bound('p2', neg=true))
-                   #limit_p0 = (-100,1000000),
-                   #limit_p1 = (-100,100),
-                   #limit_p2 = (-100,100),
                    limit_p0 = (initParams[5],initParams[5]*1.001),
                    limit_p1 = (initParams[6], initParams[6]*1.001),
                    limit_p2 = (initParams[7],initParams[7]*0.9999),
-                   limit_A = (500, 2500000),
-                   limit_tau = (20, 300),
-                   limit_mass=(400, 550))
+                   limit_A = (50000000, 2500000000000),
+                   limit_tau = (1, 1000),
+                   limit_mass=(475, 525),
+                   limit_l=(80,500))
         m.migrad()
         print("trial #", i)
         print ("likelihood: ",m.fval)
@@ -515,29 +591,30 @@ class logLike_UA2:
             return np.inf
 
 def fit_UA2(num,lnprob,initParam=None, initRange=None, Print=True):
+#initialization 
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
+    if initParam==None: # use default values if it's not specifiied 
+        initParam=(9.6, -1.67, 56.87,-75.877 )
+    if initRange==None:
+        initRange=[(-100000, 1000000.),(-100., 100.),(-100., 100.),(-100., 100.)]
+
+    print("UA fitting using using inital params: ", initParam)
+    print("UA fitting using param range: ", initRange)
+    
+
     for i in range(num):
-       # init0 = 52.
-       # init1 = 53.
-       # init2 = -1.199
-       # init3 = 1
-        if initParam:
-            
-    #defalut value 
-        else:
-            init0 = 9.6
-            init1 = -1.67
-            init2 = 56.87
-            init3 = -75.877
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
-                  p0 = init0, p1 = init1, p2 = init2, p3= init3,
+                  p0 = initParam[0], p1 = initParam[1], p2 = initParam[2], p3= initParam[3],
                   error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
-                  limit_p0 = (-100000, 1000000.), limit_p1 = (-100., 100.), limit_p2 = (-100., 100.), limit_p3=(-100.,100.))
+                  limit_p0 = initRange[0], limit_p1 = initRange[1], limit_p2 = initRange[2], limit_p3=initRange[3])
         m.migrad()
         if m.fval < minLLH:
             minLLH = m.fval
             best_fit_params = m.args
+    if best_fit_params == (0., 0., 0.):
+        print("------------------fit failed ----------------")
+
     if Print:
         print("fit function UA2")
         print ("min LL", minLLH)
@@ -561,35 +638,50 @@ class logLike_4ff: #if you want to minimize, use this to calculate the log likel
         logL = 0
         for ibin in range(len(self.y)):
             data = self.y[ibin]
-            bkgkgFunc[ibin]
-            logL += -simpleLogPoisson(data, bkg)
+            bkgFunc[ibin]
+            logL += -simpleLogPoisson(data, bkgFunc)
         try:
             logL
             return logL
         except:
             return np.inf
 
-def fit_4ff(num, lnprob, Print=True): #use this to minimize for the best fit function
-            minLLH = np.inf
-            best_fit_params = (0., 0., 0.)
-            for i in range(num):
-                init0 = np.random.random() * 52.
-                init1 = np.random.random() * 53.
-                init2 = np.random.random() * -1.199
-                init3 = np.random.random() * 1
-                m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
-                           p0=init0, p1=init1, p2=init2, p3=init3,
-                           error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
-                           limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
-                m.migrad()
-                if m.fval < minLLH:
-                    minLLH = m.fval
-                    best_fit_params = m.args
-            if Print:
-                print("fit function 4ff")
-                print ("min LL", minLLH)
-                print ("best fit vals", best_fit_params)
-            return minLLH, best_fit_params
+def fit_4ff(num, lnprob, initParam=None, initRange=None,Print=True): #use this to minimize for the best fit function
+    minLLH = np.inf
+    best_fit_params = (0., 0., 0.)
+
+    if initParam==None: # use default values if it's not specifiied
+        initParam=[52, 53, -1.199, 1]
+    for i in range(len(initParam)):
+        initParam[i] = initParam[i] *np.random.random()
+    if initRange==None:
+        initRange=[(0, 100.),(-100., 100.),(-100., 100.),(-100., 100.)]            
+
+    print("UA fitting using using inital params: ", initParam)
+    print("UA fitting using param range: ", initRange)
+    for i in range(num):
+        #m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
+        #          p0 = initParam[0], p1 = initParam[1], p2 = initParam[2], p3= initParam[3],
+        #          error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
+        #          limit_p0 = initRange[0], limit_p1 = initRange[1], limit_p2 = initRange[2], limit_p3=initRange[3])
+
+        #m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
+        #           p0=init0, p1=init1, p2=init2, p3=init3,
+        #           error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
+        #           limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
+        m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
+                p0=initParam[0], p1=initParam[1], p2=initParam[2], p3=initParam[3],
+                   error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
+                   limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
+        m.migrad()
+        if m.fval < minLLH:
+            minLLH = m.fval
+            best_fit_params = m.args
+    if Print:
+        print("fit function 4ff")
+        print ("min LL", minLLH)
+        print ("best fit vals", best_fit_params)
+    return minLLH, best_fit_params
 #-------GP
 #----------------------Hiding the procesing of the best fit function values#------
 
@@ -599,7 +691,7 @@ def y_bestFit3Params(x, y, xerr, likelihoodTrial):
     fit_mean = model_3param(x, best_fit_params, xerr) # fitting using the best fit params 
     return fit_mean
 
-def y_bestFitGP(x,y,xerr,yerr, likelihoodTrial, kernelType="bkg", bkgDataParams=None):
+def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg", bkgDataParams=None):
     if kernelType=="bkg":
         lnProb = logLike_minuit(x, y, xerr)
         #print ("in run bkg lnprob:", lnProb)
@@ -619,7 +711,8 @@ def y_bestFitGP(x,y,xerr,yerr, likelihoodTrial, kernelType="bkg", bkgDataParams=
         print(kernel.get_parameter_names())
 #
     elif kernelType =="sig":
-        lnProb = logLike_minuit_sig(x, y, xerr)
+        #lnProb = logLike_minuit_sig(x, y, xerr)
+        lnProb =logLike_minuit_sigWithWindow(x, y, xerr)
         #lnProb = logLike_gp_fitgpsig(x, y, xerr)
         #lnProb = logLike_minuit(x, y, xerr)
 
@@ -639,7 +732,7 @@ def y_bestFitGP(x,y,xerr,yerr, likelihoodTrial, kernelType="bkg", bkgDataParams=
     #if kernelType =="bkg":
     gp = george.GP(kernel, mean=Mean(fit_pars), fit_mean = True)
     gp.compute(x, yerr)
-    mu, cov = gp.predict(y, x)
+    mu, cov = gp.predict(y, xPred)
     return mu, cov , best_fit
     #return 0.0, 0.0
 def psuedoTest(pseudoTestNum, yBkgFit, yErrBkgFit,fit_mean, yBkg, yErrBkg,mu_xBkg):
@@ -709,9 +802,9 @@ def psuedoTest(pseudoTestNum, yBkgFit, yErrBkgFit,fit_mean, yBkg, yErrBkg,mu_xBk
 #    return MAP_GP, MAP_sig, MAP_bkg
 ##why is this weird
 def runGP_SplusB(ys, xs_train, xerr_train, xs_fit, xerr_fit, hyperParams):
-    Amp, decay,  lengthscale, power, sub, p0, p1, p2, A, mass, tau = hyperParams
+    Amp, decay,  lengthscale, power, sub, p0, p1, p2, A, mass, tau,l = hyperParams
 
-    kernel_sig = get_kernel_SigOnly(A, mass, tau)
+    kernel_sig = get_kernel_SigOnly(A, mass, tau,l)
     kernel_bkg = get_kernel(Amp, decay, lengthscale, power, sub)
     kernel = kernel_bkg + kernel_sig
     gp = george.GP(kernel)
