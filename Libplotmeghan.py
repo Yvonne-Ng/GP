@@ -7,7 +7,9 @@ from argparse import ArgumentParser
 from h5py import File
 import numpy as np
 import george
-from george.kernels import SignalKernel,MyDijetKernelSimp,LocalGaussianKernel#, ExpSquared#, ExpSquaredCenteredKernel, ExpSquaredKernel
+from george.kernels import SignalKernel,MyDijetKernelSimp,LocalGaussianKernel, ExpSquaredCenteredKernel#, ExpSquared#, ExpSquaredCenteredKernel, ExpSquaredKernel
+from george.kernels import ExpSquaredCenteredKernel
+
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
@@ -28,6 +30,10 @@ FIT4_PARS = ['p0', 'p1', 'p2','p3']
 #    y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.)) + d
 
   #  return y
+def model_gp(params, t, xerr): 
+    p0, p1, p2 = params
+    sqrts = 13000.
+    return (p0 * (1.-t/sqrts)**p1 * (t/sqrts)**(p2))
 
 def gaussian(x, amp, cen, wid):
     return amp * exp(-(x-cen)**2 /wid)
@@ -155,21 +161,39 @@ def makeToys(dataList, lumi = 3.6):
       return  np.random.poisson(dataList*lumi/lumi)
 
 #estimating the mean for GP cclculations
-class Mean():
-    def __init__(self, params):
-        self.p0=params[0]
-        self.p1=params[1]
-        self.p2=params[2]
-    def get_value(self, t, xErr=[]):
-        sqrts = 13000.
-        p0, p1, p2 = self.p0, self.p1, self.p2
-        # steps = np.append(np.diff(t), np.diff(t)[-1])
-        # print(steps)
-        #print("size of t",t.shape)
-        #print("size of xErr", xErr.shape)
-        vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
-        #print(vals)
-        return vals
+#class Mean():
+#    def __init__(self, params):
+#        self.p0=params[0]
+#        self.p1=params[1]
+#        self.p2=params[2]
+#    def get_value(self, t, xErr=[]):
+#        sqrts = 13000.
+#        p0, p1, p2 = self.p0, self.p1, self.p2
+#        # steps = np.append(np.diff(t), np.diff(t)[-1])
+#        # print(steps)
+#        #print("size of t",t.shape)
+#        #print("size of xErr", xErr.shape)
+#        vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
+#        #print(vals)
+#        return vals
+
+#class Mean():
+#    def __init__(self, params):
+#        self.p0=params[0]
+#        self.p1=params[1]
+#        self.p2=params[2]
+#        self.p3=params[3]
+#    def get_value(self, t, xErr=[]):
+#        sqrts = 13000.
+#        p0, p1, p2, p3 = self.p0, self.p1, self.p2, self.p3
+#        # steps = np.append(np.diff(t), np.diff(t)[-1])
+#        # print(steps)
+#        #print("size of t",t.shape)
+#        #print("size of xErr", xErr.shape)
+#        #vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
+#        vals= p0 / (t/sqrts)**p1 * np.exp(-p2* (t/sqrts)-p3 *(t/sqrts)**2) *xErr
+#        #print(vals)
+#        return vals
 
 def get_kernel(Amp, decay, length, power, sub): # getting the typical background kernel
     return Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
@@ -571,9 +595,11 @@ class logLike_gp_fitgpsig:
         self.xerr = xerr
         self.fixedHyperparams=fixedHyperparams
     def __call__(self, A, mass, tau):
-        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams #best_fit_gp
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
+        print ("logLikeGPFitGPSig:", self.fixedHyperparams.values())
         kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
         kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
+        #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
         kernel = kernel1+kernel2
         gp = george.GP(kernel)
         try:
@@ -611,7 +637,7 @@ def fit_gp_fitgpsig_minuit(lnprob, Print = True):
 def model_UA2(t, params, xErr):
     p0, p1, p2, p3 = params
     sqrts = 13000.
-    return p0 * (t/sqrts)**p1 * np.exp(-p2* (t/sqrts)-p3 *(t/sqrts)**2) *xErr
+    return p0 / (t/sqrts)**p1 * np.exp(-p2* (t/sqrts)-p3 *(t/sqrts)**2) *xErr
 
 class logLike_UA2:
     def __init__(self, x, y, xe):

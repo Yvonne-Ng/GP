@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from h5py import File
 import numpy as np
 import george
-from george.kernels import MyDijetKernelSimp#, ExpSquaredCenteredKernel#, ExpSquaredKernel
+from george.kernels import MyDijetKernelSimp, ExpSquaredCenteredKernel#, ExpSquaredKernel
 from iminuit import Minuit
 import scipy.special as ssp
 import inspect
@@ -12,7 +12,7 @@ import random
 
 #importing functions from Libplotmeghan
 from classDataSetCollection import *
-from Libplotmeghan import getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne
+from Libplotmeghan import getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne,logLike_gp_fitgpsig, fit_gp_fitgpsig_minuit, model_gp
 #import function from drawStuff
 from drawStuff import drawSignalGaussianFit, drawSignalSubtractionFit, drawFitDataSet, drawAllSignalFit
 
@@ -52,23 +52,25 @@ class signalDataSet():
         self.sig={}
         # SIGNAL RECONSTRUCTION USING OFFICIAL CODE 
         self.fixedBkgKernelHyperParams=bkgDataSet.bestFit_GPBkgKernelFit
+        print("bkggdKernelHyperParams:",bkgDataSet.bestFit_GPBkgKernelFit)
         self.sig['GPSigKernel']=self.doReconstructedSignal("GPSigKernel")
         self.sig['Gaussian']=self.doReconstructedSignal("Gaussian")
         self.sig['custom']=self.doReconstructedSignal("custom")
 
         #print best_vals
 
-    def doReconstructedSignal(option="GPSigKernel"):
+    def doReconstructedSignal(self,option="GPSigKernel"):
         if option=="GPSigKernel":
-            return reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams)
+            return self.reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams)
         if option=="Gaussian":
-            return reconstructSignalGaussianTemplate(self.fixedBkgKernelHyperParams)
+            return self.reconstructSignalGaussianTemplate(self.fixedBkgKernelHyperParams)
         if option=="custom":
-            return reconstructSignalCustomSignalTemplate(self.fixedBkgKernelHyperParams)
+            return self.reconstructSignalCustomSignalTemplate(self.fixedBkgKernelHyperParams)
         
 
     def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams):
-        Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams
+        Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
+        print("7fixedBkgKernelHyperParams.values()", fixedBkgKernelHyperParams.values())
         lnProb = logLike_gp_fitgpsig(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams)
         bestval, best_fit_new = fit_gp_fitgpsig_minuit(lnProb, False)
         A, mass, tau = best_fit_new
@@ -76,15 +78,18 @@ class signalDataSet():
         kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
         kernel = kernel1 + kernel2
         gp = george.GP(kernel)
-        gp.compute(xtoy, np.sqrt(ydata))
-        meanGPp = gp.predict( ydata - model_gp((p0,p1,p2),xtoy, xtoyerr), xvalO)[0]
-        meanGP = meanGPp + model_gp((p0,p1,p2),xvalO,xerrO)
+        gp.compute(self.sigBkgDataSet.xData, self.sigBkgDataSet.yerrData)
+        meanGPp = gp.predict( self.sigBkgDataSet.yData - model_gp((p0,p1,p2),self.sigBkgDataSet.xData,self.sigBkgDataSet.xerrData), self.sigBkgDataSet.xData)[0]
+        meanGP = meanGPp + model_gp((p0,p1,p2),self.sigBkgDataSet.xData,self.sigBkgDataSet.xerrData)
         gp2 = george.GP(kernel)
-        gp2.compute(xtoy, np.sqrt(ydata))
-        K1 = kernel1.get_value(np.atleast_2d(xtoy).T)
-        mu1 = np.dot(K1, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr))) + model_gp((p0,p1, p2), xtoy, xtoyerr)
-        K2 = kernel2.get_value(np.atleast_2d(xtoy).T)
-        mu2 = np.dot(K2, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr)))
+        gp2.compute(self.sigBkgDataSet.xData, np.sqrt(self.sigBkgDataSet.yData))
+        K1 = kernel1.get_value(np.atleast_2d(self.sigBkgDataSet.yData).T)
+        print("model_gp", self.sigBkgDataSet.yData-model_gp((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData) )  
+        print("self.sigBkgDataSet.yData", self.sigBkgDataSet.yData)
+        print("np.dot", np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_gp((p0,p1,p2),self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData))))
+        mu1 = np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_gp((p0,p1,p2),self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData))) + model_gp((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)
+        K2 = kernel2.get_value(np.atleast_2d(self.sigBkgDataSet.xData).T)
+        mu2 = np.dot(K2, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_gp((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)))
         return mu2
         
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
