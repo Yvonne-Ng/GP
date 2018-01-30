@@ -81,15 +81,17 @@ if __name__=="__main__":
     #Testing the class
     #
     #-----create a dataSet
-    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag2.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/btagged2Rebinned2.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag1.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     # Create a fit function 
     UAFitBkgndMC=FitFunction(0)
     UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgndData.xData, bkgndData.yData, bkgndData.xerrData, bkgndData.yerrData)
 
     yFit=UAFitBkgndMC.doFit()
     print(yFit)
-    sig=res_significance(yFit,bkgndData.yData)
-    drawFit(bkgndData.xData, yFit, bkgndData.yData, sig,"btagged2")
+    sig, chi2=resSigYvonne(yFit,bkgndData.yData)
+    print(sig)
+    drawFit(bkgndData.xData, bkgndData.yerrData, bkgndData.yData, yFit, sig,"btagged1")
 
     #print(UAFitBkgndMC.doFit(initFitParam=(10,-2, 56.87,-75.87),initRange=[(0, 1000000.),(-100., 100.),(-100., 100.),(-100., 100.)] ))
 

@@ -57,6 +57,8 @@ class dataSet: # each class treats a type of data set
             #Data file (For GP Fitting)
             self.xData, self.yData, self.xerrData, self.yerrData = dataCut(xMinData, xMaxData, 0, self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw)  
             print("print xData:", self.xData)
+            print("yErr:", self.yerrData)
+            print("yErrScaled: ", np.sqrt(self.yData))
             #Simple fit range 
             self.x_simpleFit, self.y_simpleFit, self.xerr_simpleFit, self.yerr_simpleFit= dataCut(xMinSimpleFit, xMaxSimpleFit, 0, self.xRaw, self.yRaw,self.xerrRaw,self.yerrRaw) # for fit function 
             #Official Fit (Already cut out in root file )
@@ -216,13 +218,14 @@ class dataSet: # each class treats a type of data set
 #please put this elsewhere
 
 class signalDataSet():
-    def __init__(self,signalBkgDataSet, bkgDataSet): 
+    def __init__(self,signalBkgDataSet, bkgDataSet ): 
         #make sure the size of both data matches 
         # finding the raw data points
         if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
             print("Error, xBkg and xBkgbk value are different")
             return  1
         else :
+            self.sigBkgDataSet=signalBkgDataSet
             self.ySigData = signalBkgDataSet.yData-bkgDataSet.yData
             self.xSigData = signalBkgDataSet.xData
         #GP subtraction fit 
@@ -236,8 +239,53 @@ class signalDataSet():
         best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
         self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
         self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
+
+        self.sig={}
+        # SIGNAL RECONSTRUCTION USING OFFICIAL CODE 
+        self.sig['GPSigKernel']=self.doReconstructedSignal("GPSigKernel",bkgDataSet.bestFit_GPBkgKernelFit)
+        self.sig['Gaussian']=self.doReconstructedSignal("Gaussian", bkgDataSet.bestFit_GPBkgKernelFit)
+        self.sig['custom']=self.doReconstructedSignal("custom", bkgDataSet.bestFit_GPBkgKernelFit)
+
         #print best_vals
 
+    def doReconstructSignal(option="GPSigKernel", fixedBkgKernelHyperParams):
+        self.fixedBkgKernelHyperParams=fixedBkgKernelHyperParams
+        if option=="GPSigKernel":
+            return reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams)
+        if option=="Gaussian":
+            return reconstructSignalGaussianTemplate(self.fixedBkgKernelHyperParams)
+        if option=="custom":
+            return reconstructSignalCustomSignalTemplate(self.fixedBkgKernelHyperParams)
+        
+
+    def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams):
+        Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams
+        lnProb = logLike_gp_fitgpsig(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams)
+        bestval, best_fit_new = fit_gp_fitgpsig_minuit(lnProb, False)
+        A, mass, tau = best_fit_new
+        kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
+        kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
+        kernel = kernel1 + kernel2
+        gp = george.GP(kernel)
+        gp.compute(xtoy, np.sqrt(ydata))
+        meanGPp = gp.predict( ydata - model_gp((p0,p1,p2),xtoy, xtoyerr), xvalO)[0]
+        meanGP = meanGPp + model_gp((p0,p1,p2),xvalO,xerrO)
+        gp2 = george.GP(kernel)
+        gp2.compute(xtoy, np.sqrt(ydata))
+        K1 = kernel1.get_value(np.atleast_2d(xtoy).T)
+        mu1 = np.dot(K1, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr))) + model_gp((p0,p1, p2), xtoy, xtoyerr)
+        K2 = kernel2.get_value(np.atleast_2d(xtoy).T)
+        mu2 = np.dot(K2, gp2.solver.apply_inverse(ydata- model_gp((p0,p1,p2),xtoy, xtoyerr)))
+        return mu2
+        
+    def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
+         lnProb = logLike_gp_sig_fixedH(sigBkgData.xData,sigBkgData.ydata, sigBkgData.xerrData)
+         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, False)
+         if np.isinf(bestval): continue 
+         N, M, W = best_fit
+
+    def reconstructSignalCustomSignalTemplate(self,fixedBkgKernelHyperParams):
+        
     def print(self):
         print("xSigData: ",self.xSigData)
         print("ySigData: ",self.ySigData)
@@ -245,6 +293,8 @@ class signalDataSet():
         print ("GP siginificaance : ", self.gpSubtractionSignificance)
         print("Gaussian Fit : ", self.yGaussianFit)
         print ("Gaussian significance: ", self.gaussianFitSignificance)
+
+
 
         
         # Reconstruction 
@@ -312,7 +362,7 @@ def fit(config):
         #drawSignalGaussianFit(signalInjectedBkgndData, signalData1, title=title)
         #drawAllSignalFit(signalInjectedBkgndData, signalData1, title=title)
         drawFitDataSet(signalInjectedBkgndData, "SignalinjectedBkgi_"+title)
-    drawFitDataSet(bkgndData, config['bkgTitle'], saveTxt=True, saveTxtDir="txt/BkgData")
+    drawFitDataSet(bkgndData, config['bkgTitle'], saveTxt=True, saveTxtDir="../txt/BkgData")
 
     
 
@@ -325,35 +375,35 @@ if __name__=="__main__":
     print("----------------------")
     print("----------------------")
     
-    configBkg={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",
-            "bkgFileDir": "dijetgamma_g85_2j65",
-            "bkgDataFileHist": "Zprime_mjj_var",
-            "bkgOffFitFile":"data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
-            "xMin": 300,
-            "xMax": 1500,
-            "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/",
-            "signalPlusBkgFileTemp": "MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
-            "sigPlusBkgOffFitFile": "data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
-            "trialBkg":1,
-            "trialSigPlusBkg": 1,
-            "title":"mc_bkgsig_sigmul",
-            "bkgTitle": "MC_Bkg"}
-    
-    fit(configBkg)
+    #configBkg={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",
+    #        "bkgFileDir": "dijetgamma_g85_2j65",
+    #        "bkgDataFileHist": "Zprime_mjj_var",
+    #        "bkgOffFitFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
+    #        "xMin": 300,
+    #        "xMax": 1500,
+    #        "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/",
+    #        "signalPlusBkgFileTemp": "MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
+    #        "sigPlusBkgOffFitFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
+    #        "trialBkg":1,
+    #        "trialSigPlusBkg": 1,
+    #        "title":"mc_bkgsig_sigmul",
+    #        "bkgTitle": "MC_Bkg"}
+    #
+    #fit(configBkg)
 
-    configSig={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/data2016.h5",
-            "bkgFileDir": "",
-            "bkgDataFileHist": "Zprime_mjj_var",
-            "bkgOffFitFile":"data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
-            "xMin": 300,
-            "xMax": 1500,
-            "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/",
-            "signalPlusBkgFileTemp": "Data_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
-            "sigPlusBkgOffFitFile": "data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
-            "trialBkg":1,
-            "trialSigPlusBkg": 1,
-            "title":"data_bkgsig_sigmul",
-            "bkgTitle": "Data_Bkg"}
+    #configSig={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/data2016.h5",
+    #        "bkgFileDir": "",
+    #        "bkgDataFileHist": "Zprime_mjj_var",
+    #        "bkgOffFitFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys//data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
+    #        "xMin": 300,
+    #        "xMax": 1500,
+    #        "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/",
+    #        "signalPlusBkgFileTemp": "Data_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
+    #        "sigPlusBkgOffFitFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
+    #        "trialBkg":1,
+    #        "trialSigPlusBkg": 1,
+    #        "title":"data_bkgsig_sigmul",
+    #        "bkgTitle": "Data_Bkg"}
 
     #fit(configSig)
 ##################---------------------MC------------------ ####################
@@ -386,14 +436,14 @@ if __name__=="__main__":
 
 
 #------- Dataset: signal plus bkgnd Data
-    #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-    #bkgndData.fitAll( trialAll=1)
+    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    bkgndData.fitAll( trialAll=1)
     #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/data2016.h5",dataFileDir="", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     #bkgndData.fitAll( trialAll=1)
 
 ##--------Dataset: signal plus bkgnd Data
-#    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-#    signalInjectedBkgndData.fitAll(trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+    signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
+    signalInjectedBkgndData.fitAll(trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
 #
 #making a list of toys for the signal plus bkgnd Data 
 #-------list of Toy DataSet:bkgnd data
@@ -420,14 +470,14 @@ if __name__=="__main__":
 ##signalData
 #making signal data set
 
-    #signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
-    #signalData1.print()
-##te#st ToyList
-    #
-#---#---- drawing stuff
-    #drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
-    #drawAllSignalFit(signalInjectedBkgndData, signalData1)
-    #drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
+    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
+    signalData1.print()
+##test ToyList
+    
+#------- drawing stuff
+    drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
+    drawAllSignalFit(signalInjectedBkgndData, signalData1)
+    drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
 #    drawFitDataSet(bkgndData, "Bkg", saveTxt=True, saveTxtDir="txt/BkgData")
 
 #
