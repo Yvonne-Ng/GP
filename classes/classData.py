@@ -53,8 +53,9 @@ class dataSet: # each class treats a type of data set
             if useScaled:
                 self.yerrRaw=np.sqrt(self.yRaw)
                 self.yerrRawOffFit=np.sqrt(self.yRawOffFit)
+            else:
+                self.weighted=self.np.square(yerrRaw)/self.yRaw
         #Cutting out the desired range 
-        
             #Data file (For GP Fitting)
             self.xData, self.yData, self.xerrData, self.yerrData = dataCut(xMinData, xMaxData, 0, self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw)  
             print("print xData:", self.xData)
@@ -358,7 +359,7 @@ if __name__=="__main__":
 
 
 #------- Dataset: signal plus bkgnd Data
-    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRVATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     bkgndData.fitAll( trialAll=1)
     #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/data2016.h5",dataFileDir="", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     #bkgndData.fitAll( trialAll=1)
