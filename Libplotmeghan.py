@@ -450,7 +450,7 @@ class logLike_gp_fitgpsig:
         print("self.weight", self.weight)
 
     def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0):
-        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedParams
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixParam.values()
         kernel1 = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
         kernel2 = A * LocalGaussianKernel(mass, tau)
         kernel = kernel1 #+ kernel2

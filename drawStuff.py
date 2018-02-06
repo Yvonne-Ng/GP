@@ -206,6 +206,9 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
         #can.ax.plot(signalBkgDataSet.xData, signalBkgDataSet.MAP_sig, '-b', label="Signal GP reconstructed Fit")
         #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['GPSigKernel'],'-b', label="Signal GP Kernel reconstructed Fit")
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Gaussian Fit")
+        print(asignalDataSet.sig['custom'])
+        can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-b', label="Signal GP Kernel reconstructed signal template Fit")
+
         #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed custom Fit")
         #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed Fit")
 

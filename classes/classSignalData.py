@@ -65,7 +65,7 @@ class signalDataSet():
 
         #print best_vals
 
-    def doReconstructedSignal(self,option="GPSigKernel", trial=10):
+    def doReconstructedSignal(self,option="GPSigKernel", trial=100):
         self.trial=trial
         if option=="GPSigKernel":
             return self.reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams,trial)
@@ -77,9 +77,8 @@ class signalDataSet():
 
     def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams,trial):
         Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
-        #print("7fixedBkgKernelHyperParams.values()", fixedBkgKernelHyperParams.values())
-        lnProb = logLike_gp_fitgpsig(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weighted)
-        print("hist list:", list(self.bkgDataSet.getGPBkgKernelFitParams().values()))
+        lnProb = logLike_gp_fitgpsig(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
+        print("test: ",lnProb(Amp, decay, length, power, sub, p0, p1, p2))
         bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
         A, mass, tau = best_fit_new
         kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)

@@ -40,15 +40,18 @@ class FitFunction():
         self.doneFit=False
 
 
-    def grabNProcessData(self,xMin, xMax, xRaw, yRaw, xerrRaw, yerrRaw):
+    def grabNProcessData(self,xMin, xMax, xRaw, yRaw, xerrRaw, yerrRaw,weight=None,useScaled=False):
         self.grabbedData=True
         self.xData, self.yData, self.xerrData, self.yerrData=dataCut(xMin, xMax, 0., xRaw, yRaw,xerrRaw, yerrRaw)
+        if weight is not None:
+            self.weight=weight
     
     #-------Running the Fit 
-    def doFit(self, initFitParam=None, initRange=None, trial=100):
+    def doFit(self, initFitParam=None, initRange=None, trial=100,useScaled=False):
         self.fitParam=initFitParam
         self.rangeFitParam=initRange
         self.trial=trial
+        self.useScaled=useScaled
 
         if self.grabbedData==True:
             if self.functionChoice==0:
@@ -62,12 +65,19 @@ class FitFunction():
     #-----different choices of fitFunctions
     def UAFitFunction(self):
         #----3 param fit function in a different way
-        lnProbUA2 = logLike_UA2(self.xData,self.yData,self.xerrData)
-        #where the initRange is set
+        if self.useScaled==False:
+            lnProbUA2 = logLike_UA2(self.xData,self.yData,self.xerrData, weight=self.weight)
+            #where the initRange is set
+        else:
+            lnProbUA2 = logLike_UA2(self.xData,self.yData,self.xerrData)
+            #where the initRange is set
         minimumLLH, best_fit_params = fit_UA2(self.trial,  lnProbUA2,initParam=self.fitParam, initRange=self.rangeFitParam)
         fit_mean = model_UA2(self.xData, best_fit_params, self.xerrData)
         self.bestFitParams=best_fit_params
         return fit_mean 
+
+    def Param3Fit(self):
+        lnProb=logLike_3ff(self.xData, self.yData, self.xerrData)
 
     def std4ParamsFit(self):
         #----4 param fit function
@@ -82,14 +92,26 @@ if __name__=="__main__":
     #
     #-----create a dataSet
     #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/btagged2Rebinned2.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag1.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+    #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag1.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     # Create a fit function 
-    UAFitBkgndMC=FitFunction(0)
-    UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgndData.xData, bkgndData.yData, bkgndData.xerrData, bkgndData.yerrData)
+    useScaled=False
+    if not useScaled:
+        bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag1.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
+        UAFitBkgndMC=FitFunction(0)
+        UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgndData.xData, bkgndData.yData, bkgndData.xerrData, bkgndData.yerrData,bkgndData.weighted)
+        yFit=UAFitBkgndMC.doFit(trial=1, useScaled=False)
+        sig, chi2=resSigYvonne(yFit,bkgndData.yData, bkgndData.weighted)
+        print("yFitSize: ", yFit.shape)
+        print("bkgndData.weighted size: ", bkgndData.weighted.shape)
 
-    yFit=UAFitBkgndMC.doFit()
+    if useScaled:
+        bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/trijet_HLT_j380_inclusive.h5",dataFileDir="", dataFileHist="background_mjj_var",officialFitFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5",useScaled=True)
+        UAFitBkgndMC=FitFunction(0)
+        UAFitBkgndMC.grabNProcessData(bkgndData.xMinData, bkgndData.xMaxData, bkgndData.xData, bkgndData.yData, bkgndData.xerrData, bkgndData.yerrData, useScaled=True)
+        yFit=UAFitBkgndMC.doFit(trial=500, useScaled=True)
+        sig, chi2=resSigYvonne(yFit,bkgndData.yData, None)
+
     print(yFit)
-    sig, chi2=resSigYvonne(yFit,bkgndData.yData)
     print(sig)
     drawFit(bkgndData.xData, bkgndData.yerrData, bkgndData.yData, yFit, sig,"btagged1")
 

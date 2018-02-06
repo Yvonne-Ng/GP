@@ -7,12 +7,12 @@ def signalReconstruction():
 #----Make a bkgnd Data Set
     bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
 
-    bkgndData.fitAll( trialAll=1)
+    bkgndData.fitAll( trialAll=5)
 
 
 #----Make a Signal Injected bkgnd Data Set
     signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-    signalInjectedBkgndData.fitAll(trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+    signalInjectedBkgndData.fitAll(trialAll=5, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
 
 #-----Make a signal Data Set 
     signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
