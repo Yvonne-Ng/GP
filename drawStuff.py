@@ -138,7 +138,7 @@ def drawFitDataSet(dataSet, title, saveTxt=False, saveTxtDir=None):
 def drawChi2ToySet(dataSet, ToyDataSet, title):
     pass
 
-def drawFit(xData, yerr, yData, yFit,sig , title, saveTxt=False, saveTxtDir=None):
+def drawFit(xData=None, yerr=None, yData=None, yFit=None,sig=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
     with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
@@ -148,11 +148,31 @@ def drawFit(xData, yerr, yData, yFit,sig , title, saveTxt=False, saveTxtDir=None
         #ratio plot:
         print("x: ", xData)
         print("sig: ", sig)
-        can.ratio.stem(xData, sig, markerfmt='.', basefmt=' ')
-        can.ratio.set_ylabel("significance")
-        can.ratio.axhline(0, linewidth=1, alpha=0.5)
+        if sig:
+            can.ratio.stem(xData, sig, markerfmt='.', basefmt=' ')
+            can.ratio.set_ylabel("significance")
+            can.ratio.axhline(0, linewidth=1, alpha=0.5)
         can.save(title)
 
+#TODO: expansion to make yFit a list and sig a list
+
+def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, title=None, saveTxt=False, saveTxtDir=None):
+    # draw the data set using diffrent fits
+    ext= ".pdf"
+    with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
+        can.ax.errorbar(xData, yData,yerr, fmt='.g', label="datapoints") # drawing the points
+        can.ax.set_yscale('log')
+        can.ax.plot(xData, yFit, '-g', label="bkgndKernelFit") #drawing 
+        can.ax.plot(xData, yFit2, '-r', label="GP background+signal") #drawing 
+        #ratio plot:
+        #print("x: ", xData)
+        #print("sig: ", sig)
+        can.ax.legend(framealpha=0)
+        if sig:
+            can.ratio.stem(xData, sig, markerfmt='.', basefmt=' ')
+            can.ratio.set_ylabel("significance")
+            can.ratio.axhline(0, linewidth=1, alpha=0.5)
+        can.save(title)
 def makePrettyPlots_chi2(GPchi2, BKGchi2, title, drawchi2=False, xname=r'$\chi^{2}$/d.o.f.', label1 = "Gaussian Process", label2 = "Fit Function"):
     f, (ax1) = plt.subplots(1, figsize=(12,12), gridspec_kw = {'height_ratios':[1, 1]})
     f.suptitle(title, fontsize=40)
@@ -178,14 +198,15 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
     title=title+"allSignalFit"
     with Canvas(f'%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.k', label="signal MC injected") # drawing the points
-        can.ax.set_ylim(0.1,1000.0)
+        can.ax.set_ylim(0.1,10000.0)
         if doLog:
             can.ax.set_yscale('log')
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGaussianFit, '-r', label="Signal point Gaussian Fit(injected signal)")
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGPSubtractionFit, '-g', label="Signal GP Fit subtraction")
         #can.ax.plot(signalBkgDataSet.xData, signalBkgDataSet.MAP_sig, '-b', label="Signal GP reconstructed Fit")
-        can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['GPSigKernel'],'-b', label="Signal GP Kernel reconstructed Fit")
-        can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Fit")
+        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['GPSigKernel'],'-b', label="Signal GP Kernel reconstructed Fit")
+        can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Gaussian Fit")
+        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed custom Fit")
         #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed Fit")
 
         #can.axplot(signalBkgDataset.xData, asignalDataSet.yReconsturcted)

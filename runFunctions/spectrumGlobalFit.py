@@ -10,21 +10,30 @@
 from classFitFunction import *
 
 def spectrumGlobalFit(config): 
-    mjjData=dataSet(config['xMinFit'], config['xMaxFit'], config['xMinGP'], config['xMaxGP'], dataFile=config['dataFile'],dataFileDir=config['dataFileTDir'], dataFileHist=config['dataFileHist'],officialFitFile=config['officialFitFile'])
+    mjjData=dataSet(config['xMinFit'], config['xMaxFit'], config['xMinGP'], config['xMaxGP'], dataFile=config['dataFile'],dataFileDir=config['dataFileTDir'], dataFileHist=config['dataFileHist'],officialFitFile=config['officialFitFile'], useScaled=config['useScaled'])
 
     # Create a fit function 
-    UAFit=FitFunction(config['fitFunction'])
-    UAFit.grabNProcessData(mjjData.xMinData, mjjData.xMaxData, mjjData.xData, mjjData.yData, mjjData.xerrData, mjjData.yerrData)
+#----find weight hist
+    if not config['useScaled']:
+        config['weightHist']=mjjData.weight
+    else:
+        config['weightHist']=None
 
-    yFit=UAFit.doFit(initFitParam=config['initFitParam'], initRange=config['initRange'])
+    Fit=FitFunction(config['fitFunction'])
+    Fit.grabNProcessData(mjjData.xMinData, mjjData.xMaxData, mjjData.xData, mjjData.yData, mjjData.xerrData, mjjData.yerrData, useScaled=config['useScaled'], weight=config['weightHist'])
+
+    yFit=Fit.doFit(initFitParam=config['initFitParam'], initRange=config['initRange'], trial=1, useScaled=config['useScaled'])
     print(yFit)
-    sig=res_significance(yFit,mjjData.yData)
-    drawFit(mjjData.xData, yFit, mjjData.yData, sig,config['title'])
+
+
+    sig, chi2=resSigYvonne(yFit,mjjData.yData, config['weightHist'])
+    drawFit(mjjData.xData, mjjData.yerrData, mjjData.yData, yFit, sig,config['title'])
 
 if __name__=="__main__":
 #-----------a template config file -------#
     config={#-----Title
-            "title": "btagged2test",
+            "title": "btagged2testspectrumFile",
+            "useScaled": True, 
             #-----fit range 
             "xMinFit": 300,
             "xMaxFit": 1500,

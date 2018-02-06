@@ -20,21 +20,34 @@ import random
 from numpy import exp
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from drawStuff import *
 
 FIT3_PARS = ['p0','p1','p2']
 FIT4_PARS = ['p0', 'p1', 'p2','p3']
 
 #General Function
+
 #def gauss(x, *p):
 #    a, b, c, d = p
 #    y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.)) + d
 
   #  return y
+#def model_gp(params, t, xerr): 
+#    p0, p1, p2 = params
+#    sqrts = 13000.
+#    return (p0 * (1.-t/sqrts)**p1 * (t/sqrts)**(p2))*xerr
+#
+#alternate model_gp that matched more or less with Mean
+
+
+class prettyfloat(float):
+    def __repr__(self):
+        return "%0.2f" % self
+
 def model_gp(params, t, xerr): 
     p0, p1, p2 = params
     sqrts = 13000.
-    return (p0 * (1.-t/sqrts)**p1 * (t/sqrts)**(p2))
-
+    return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
 def gaussian(x, amp, cen, wid):
     return amp * exp(-(x-cen)**2 /wid)
 
@@ -77,6 +90,7 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
     pvals = []
     zvals = []
     chi2 = 0
+    print("Data: ", Data)
     for i, nD in enumerate(Data):
         nB = Bkg[i]
         if nD != 0:
@@ -95,10 +109,15 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
         else: zval = 0
             
         zvals.append(zval)
-        if ((nD - nB) ** 2 / abs(nD)) <2:
-            chi2 += ((nD - nB) ** 2 / abs(nD)) 
-        else :
-            chi2 += 2
+        print(abs(nD))
+        if abs(nD)==0.:
+            chi2+=2
+        else:
+            if ((nD - nB) ** 2 / abs(nD)) <2:
+                
+                chi2 += ((nD - nB) ** 2 / abs(nD)) 
+            else :
+                chi2 += 2
 
         #print("bin: ", i, "nD: ", nD, "nB", nB)
         #print("((nD - nB) ** 2 / abs(nD))", ((nD - nB) ** 2 / abs(nD)) )
@@ -107,12 +126,15 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
     zvals=np.array(zvals)
     return zvals, chi2
 
+def sig_model(x, N=1e5, mass=2000., width=100., xErr=0.1):
+    return N*(np.exp(-(x-mass)**2/2/width/width)/np.sqrt(2*np.pi)/width)*xErr
+
 def poissonPVal(d,b):
     if (d>=b):
         answer=ssp.gammainc(d,b)
     else:
         answer=1-ssp.gammainc(d+1,b)
-    print("poissonPVal: ", answer)
+    #print("poissonPVal: ", answer)
     return answer
 
 def probToSigma(prob):
@@ -120,21 +142,25 @@ def probToSigma(prob):
         return "Yvonne ERROR, prob out of range in probToSigma"
     valtouse = 1-2*prob
     if (valtouse>-1 and valtouse<1) :
-        print("Yvonne Sigma:", math.sqrt(2.0)*ssp.erfinv(valtouse))
+        #print("Yvonne Sigma:", math.sqrt(2.0)*ssp.erfinv(valtouse))
         return math.sqrt(2.0)*ssp.erfinv(valtouse)
     elif (valtouse==1): 
-        print("Yvonne Sigma:", 20)
+        #print("Yvonne Sigma:", 20)
         return 20
     else:
-        print("Yvonne Sigma:", 20)
+        #print("Yvonne Sigma:", 20)
         return -20
     
-def resSigYvonne(Data, Bkg, xData=None, xBkg=None):
+def resSigYvonne(Data, Bkg, weight=None):
     resultResidual=[]
     chi2Sum=0
     for i in range(len(Data)):
-        d=Data[i]
-        b=Bkg[i]
+        if weight is not None:
+            d=Data[i]/weight[i]
+            b=Bkg[i]/weight[i]
+        else:
+            d=Data[i]
+            b=Bkg[i]
         chi2Sum=(d-b)**2+chi2Sum
         #do I actually need berr
         #berr
@@ -161,39 +187,21 @@ def makeToys(dataList, lumi = 3.6):
       return  np.random.poisson(dataList*lumi/lumi)
 
 #estimating the mean for GP cclculations
-#class Mean():
-#    def __init__(self, params):
-#        self.p0=params[0]
-#        self.p1=params[1]
-#        self.p2=params[2]
-#    def get_value(self, t, xErr=[]):
-#        sqrts = 13000.
-#        p0, p1, p2 = self.p0, self.p1, self.p2
-#        # steps = np.append(np.diff(t), np.diff(t)[-1])
-#        # print(steps)
-#        #print("size of t",t.shape)
-#        #print("size of xErr", xErr.shape)
-#        vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
-#        #print(vals)
-#        return vals
-
-#class Mean():
-#    def __init__(self, params):
-#        self.p0=params[0]
-#        self.p1=params[1]
-#        self.p2=params[2]
-#        self.p3=params[3]
-#    def get_value(self, t, xErr=[]):
-#        sqrts = 13000.
-#        p0, p1, p2, p3 = self.p0, self.p1, self.p2, self.p3
-#        # steps = np.append(np.diff(t), np.diff(t)[-1])
-#        # print(steps)
-#        #print("size of t",t.shape)
-#        #print("size of xErr", xErr.shape)
-#        #vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
-#        vals= p0 / (t/sqrts)**p1 * np.exp(-p2* (t/sqrts)-p3 *(t/sqrts)**2) *xErr
-#        #print(vals)
-#        return vals
+class Mean():
+    def __init__(self, params):
+        self.p0=params[0]
+        self.p1=params[1]
+        self.p2=params[2]
+    def get_value(self, t, xErr=[]):
+        sqrts = 13000.
+        p0, p1, p2 = self.p0, self.p1, self.p2
+        # steps = np.append(np.diff(t), np.diff(t)[-1])
+        # print(steps)
+        #print("size of t",t.shape)
+        #print("size of xErr", xErr.shape)
+        vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
+        #print(vals)
+        return vals
 
 def get_kernel(Amp, decay, length, power, sub): # getting the typical background kernel
     return Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
@@ -242,7 +250,6 @@ class logLike_minuit:
             return np.inf
 
 def fit_gp_minuit(num, lnprob):
-
     min_likelihood = np.inf
     best_fit_params = (0, 0, 0, 0, 0,0,0,0)
     guesses = {
@@ -430,13 +437,20 @@ def fit_gpSig_minuit(num, lnprob, initParams):
 
 #------GP signal plus bkgnd
 class logLike_gp_fitgpsig:
-    def __init__(self, x, y, xerr):
+    def __init__(self, x, y, xerr,fixedParams,  weight=None):
         self.x = x
         self.y = y
         self.xerr = xerr
+        self.fixParam=fixedParams
+
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.one(self.x.size)
+        print("self.weight", self.weight)
 
     def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0):
-        #Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedParams
         kernel1 = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
         kernel2 = A * LocalGaussianKernel(mass, tau)
         kernel = kernel1 #+ kernel2
@@ -444,7 +458,7 @@ class logLike_gp_fitgpsig:
         gp = george.GP(kernel)
         try:
             gp.compute(self.x, np.sqrt(self.y))
-            return -gp.lnlikelihood(self.y, self.xerr)
+            return -gp.lnlikelihood(self.y/weight, self.xerr/weight)
         except:
             return np.inf
 
@@ -525,10 +539,14 @@ def simpleLogPoisson(x, par):
         lnpoisson = x*np.log(par)-par-ssp.gammaln(x+1.)
         return lnpoisson
 
-def model_3param(t, params, xErr): 
+def model_3param(params,t, xErr): 
     p0, p1, p2 = params
     sqrts = 13000.
-    return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2)*(xErr) )
+
+    #return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2)*(xErr) )
+    #print ("p0, p1, p2:", params)
+    #print("t: ", t)
+    return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2) )
 
 class logLike_3ff:
     def __init__(self, x, y, xe):
@@ -537,7 +555,7 @@ class logLike_3ff:
         self.xe = xe
     def __call__(self, p0, p1, p2):
         params = p0, p1, p2
-        bkgFunc = model_3param(self.x, params, self.xe)       
+        bkgFunc = model_3param(params, self.x,self.xe)       
         logL = 0
         for ibin in range(len(self.y)):
             data = self.y[ibin]
@@ -588,51 +606,50 @@ def fit_3ff(num,lnprob, Print=True):
     return minLLH, best_fit_params
 
 #------Fixed Param for signal reconstruction
-class logLike_gp_fitgpsig:
-    def __init__(self, x, y, xerr,fixedHyperparams):
-        self.x = x
-        self.y = y
-        self.xerr = xerr
-        self.fixedHyperparams=fixedHyperparams
-    def __call__(self, A, mass, tau):
-        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
-        print ("logLikeGPFitGPSig:", self.fixedHyperparams.values())
-        kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
-        kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
-        #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
-        kernel = kernel1+kernel2
-        gp = george.GP(kernel)
-        try:
-            gp.compute(self.x, np.sqrt(self.y))
-            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr))
-        except:
-            return np.inf  
-        
-def fit_gp_fitgpsig_minuit(lnprob, Print = True):
-    bestval = np.inf
-    bestargs = (0, 0, 0)
-    passedFit = False
-    numRetries = 0
-    for i in range(100):
-        init0 = np.random.random() * 3000.
-        init1 = np.random.random() * 3000.
-        init2 = np.random.random() * 200.
-        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
-                  A = init0, mass = init1, tau = init2, 
-                  error_A = 1., error_mass = 1., error_tau = 1.,
-                  limit_A = (1, 1e5), limit_mass = (1000, 7000), limit_tau = (100, 500))
-        fit = m.migrad()
-        if m.fval < bestval:
-            bestval = m.fval
-            bestargs = m.args   
-            print (bestargs)
-
-    if Print:
-        print ("min LL", bestval)
-        print ("best fit vals",bestargs)
-    return bestval, bestargs
-
-
+#class logLike_gp_fitgpsig:
+#    def __init__(self, x, y, xerr,fixedHyperparams):
+#        self.x = x
+#        self.y = y
+#        self.xerr = xerr
+#        self.fixedHyperparams=fixedHyperparams
+#    def __call__(self, A, mass, tau):
+#        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
+#        kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
+#        kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
+#        #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
+#        kernel = kernel1+kernel2
+#        gp = george.GP(kernel)
+#        try:
+#            gp.compute(self.x, np.sqrt(self.y))
+#            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr))
+#        except:
+#            return np.inf  
+#        
+#def fit_gp_fitgpsig_minuit(lnprob, Print = True):
+#    bestval = np.inf
+#    bestargs = (0, 0, 0)
+#    passedFit = False
+#    numRetries = 0
+#    for i in range(100):
+#        init0 = np.random.random() * 3000.
+#        init1 = np.random.random() * 3000.
+#        init2 = np.random.random() * 200.
+#        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
+#                  A = init0, mass = init1, tau = init2, 
+#                  error_A = 1., error_mass = 1., error_tau = 1.,
+#                  limit_A = (1, 1e5), limit_mass = (1000, 7000), limit_tau = (100, 500))
+#        fit = m.migrad()
+#        if m.fval < bestval:
+#            bestval = m.fval
+#            bestargs = m.args   
+#            print (bestargs)
+#
+#    if Print:
+#        print ("min LL", bestval)
+#        print ("best fit vals",bestargs)
+#    return bestval, bestargs
+#
+#
 #-------UA2
 def model_UA2(t, params, xErr):
     p0, p1, p2, p3 = params
@@ -640,18 +657,30 @@ def model_UA2(t, params, xErr):
     return p0 / (t/sqrts)**p1 * np.exp(-p2* (t/sqrts)-p3 *(t/sqrts)**2) *xErr
 
 class logLike_UA2:
-    def __init__(self, x, y, xe):
+    def __init__(self, x, y, xe, weight=None):
         self.x = x
         self.y = y
         self.xe = xe
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+        #print("self.weight", self.weight)
+        
     def __call__(self, p0, p1, p2, p3):
         params = p0, p1, p2, p3
         bkgFunc = model_UA2(self.x, params, self.xe)
         logL = 0
+        #print ("dataY: ", self.y)
+        #print ("bkgFunc: ", bkgFunc)
+        #print("dataY/weight: ",self.y/self.weight)
+        #print("bkgFunc/weight: ",bkgFunc/self.weight)
+        
         for ibin in range(len(self.y)):
             data = self.y[ibin]
             bkg = bkgFunc[ibin]
-            logL += -simpleLogPoisson(data, bkg)
+            binWeight = self.weight[ibin] 
+            logL += -simpleLogPoisson(data/binWeight, bkg/binWeight)
         try:
             logL
             return logL
@@ -672,9 +701,18 @@ def fit_UA2(num,lnprob,initParam=None, initRange=None, Print=True):
         #------btagged 2
         #initFitParam=[1000, 10, 100, 200]
         #initParam=[0.2230885992853473, -1.6173406469678184, 44.10320875775574, -129.8708750637629]
-    if initRange==None:
 
-        initRange=[(-1000000, 1000000.),(-100., 100.),(-100., 100.),(-300., 200.)]
+        #-----trijet 
+        #initFitParam=[10000000, 50, 200, 500]
+         #non use Scaled
+        #initParam=(297194.05479060113, 0.33939799509016044, 96.16372727354921, 1.9280619077735317)
+        #useScaled
+        #initParam=(923489.4363469365, 0.07338929885136791, 102.61856227867057, 3.338702006368571)
+        #initParam=(923492.5666110474, 0.07340343406897532, 102.61856087361235, 3.3674253868660884)
+        #initParam=(2114090.3221715163, -0.10249143346059597, 110.96753410590006, -41.90626047681503)
+
+    if initRange==None:
+        initRange=[(2000000, 50000000.),(-10, 10),(-100, 600.),(-300, 300.)]
 
     print("UA fitting using using inital params: ", initParam)
     print("UA fitting using param range: ", initRange)
@@ -698,8 +736,9 @@ def fit_UA2(num,lnprob,initParam=None, initRange=None, Print=True):
 
     if Print:
         print("fit function UA2")
-        print ("min LL", minLLH)
+        print ("min LL", prettyfloat(minLLH))
         print ("best fit vals", best_fit_params)
+
     return minLLH, best_fit_params
 #-------fit 4
 
@@ -769,9 +808,9 @@ class logLike_gp_sig_fixedH:
         self.x = x
         self.y = y
         self.xerr = xerr
-        self.fixedHyperparams
+        self.fixedHyperparams=fixedHyperparams
     def __call__(self, Num, mu, sigma):
-        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values()
         kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
         gp = george.GP(kernel)
         try:
@@ -786,71 +825,89 @@ def fit_gp_sig_fixedH_minuit(lnprob, Print = True):
     bestargs = (0, 0, 0)
     passedFit = False
     numRetries = 0
-    for i in range(100):
+    for i in range(1):
         init0 = np.random.random() * 5000.
         init1 = np.random.random() * 4000.
         init2 = np.random.random() * 200.
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   Num = init0, mu = init1, sigma = init2, 
                   error_Num = 1., error_mu = 1., error_sigma = 1.,
-                  limit_Num = (1, 50000), limit_mu = (1500, 7000), limit_sigma = (100, 500)) 
+                  limit_Num = (1, 50000000), limit_mu = (450, 550), limit_sigma = (50, 700)) 
         fit = m.migrad()
         if m.fval < bestval:
             bestval = m.fval
             bestargs = m.args     
-            
 
     if Print:
         print ("min LL", bestval)
         print ("best fit vals",bestargs)
     return bestval, bestargs
 
+
+#def sig_model(x, N=1e5, mass=2000., width=100., xErr=0.1):
+#    return N*(np.exp(-(x-mass)**2/2/width/width)/np.sqrt(2*np.pi)/width)*xErr
+def customSignalModel(N, yTemp):
+    #probably don't need x? 
+    N=40000
+    return N* yTemp
+
 class logLike_gp_customSigTemplate:
-    def __init__(self, x, y, xerr):
+    def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper):
         self.x = x
         self.y = y
         self.xerr = xerr
-    def __call__(self, N):
-        Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
+        #self.hist=hist
+        self.xTemplate=xTemplate
+        self.yTempNorm= yTempNorm
+        self.fixedHyper=fixedHyper
+
+    def __call__(self, Num=40000):
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values()
         kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
         gp = george.GP(kernel)
+        print('yprint')
         try:
             gp.compute(self.x, np.sqrt(self.y))
-            signal = sig_model(self.x, Num, mu, sigma, self.xerr)
+            signal = customSignalModel(Num, self.yTempNorm)
+            print("self.y - model_gp((p0,p1,p2), self.x, self.xerr)",self.y - model_gp((p0,p1,p2), self.x, self.xerr))
+            print("yNorm:", self.yTempNorm)
+            print("N: ", Num)
+            print("signal: ", signal)
             return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr)-signal)
         except:
             return np.inf        
-        
-def fit_gp_sig_fixedH_minuit(lnprob, Print = True):
+
+    
+def fit_gp_customSig_fixedH_minuit(lnprob, Print = True):
     bestval = np.inf
-    bestargs = (0, 0, 0)
+    bestargs = (0, 0, 0, 0)
     passedFit = False
     numRetries = 0
     for i in range(100):
-        init0 = np.random.random() * 5000.
-        init1 = np.random.random() * 4000.
-        init2 = np.random.random() * 200.
+        init0 = np.random.random() * 50000.
+        print("init0: ", init0)
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
-                  Num = init0, mu = init1, sigma = init2, 
-                  error_Num = 1., error_mu = 1., error_sigma = 1.,
-                  limit_Num = (1, 50000), limit_mu = (1500, 7000), limit_sigma = (100, 500)) 
+                  Num = init0,  
+                  error_Num = 1.,
+                  limit_Num = (40000, 50000)) 
         fit = m.migrad()
         if m.fval < bestval:
             bestval = m.fval
             bestargs = m.args     
-            
+        print("log likelihood: ", m.fval)
+        print("custom fit params:", m.args)
 
     if Print:
         print ("min LL", bestval)
-        print ("best fit vals",bestargs)
+        print ("best fit vals custom: ",bestargs)
     return bestval, bestargs
-#-------GP
-#----------------------Hiding the procesing of the best fit function values#------
+
+
 
 def y_bestFit3Params(x, y, xerr, likelihoodTrial):
     lnProb = logLike_3ff(x,y,xerr)
     minimumLLH, best_fit_params = fit_3ff(100, lnProb) #finding the best fit param by the minimum likelihood 
-    fit_mean = model_3param(x, best_fit_params, xerr) # fitting using the best fit params 
+    fit_mean = model_3param(best_fit_params, x, xerr) # fitting using the best fit params 
     return fit_mean
 
 def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg", bkgDataParams=None):
@@ -972,14 +1029,14 @@ def runGP_SplusB(ys, xs_train, xerr_train, xs_fit, xerr_fit, hyperParams):
     gp = george.GP(kernel)
     gp.compute(xs_train, np.sqrt(ys))
 
-    MAP_GP, cov_GP = gp.predict( ys - model_3param(xs_train, (p0, p1, p2), xerr_train), xs_fit)
-    MAP_GP = MAP_GP + model_3param(xs_fit,(p0,p1,p2),xerr_fit)
+    MAP_GP, cov_GP = gp.predict( ys - model_3param((p0, p1, p2), xs_train, xerr_train), xs_fit)
+    MAP_GP = MAP_GP + model_3param((p0,p1,p2),xs_fit,xerr_fit)
 #K1 is : covariance matrix
     K1 = kernel_bkg.get_value(np.atleast_2d(xs_train).T)
 
 #MAP_sig
-    MAP_sig = np.dot(K1, gp.solver.apply_inverse(ys - model_3param(xs_train,(p0,p1,p2),xerr_train))) + model_3param(xs_train,(p0,p1, p2), xerr_train)
+    MAP_sig = np.dot(K1, gp.solver.apply_inverse(ys - model_3param((p0,p1,p2),xs_train, xerr_train))) + model_3param((p0,p1, p2),xs_train, xerr_train)
     K2 = kernel_sig.get_value(np.atleast_2d(xs_train).T)
-    MAP_bkg = np.dot(K2, gp.solver.apply_inverse(ys-model_3param(xs_train, (p0,p1, p2), xerr_train)))
+    MAP_bkg = np.dot(K2, gp.solver.apply_inverse(ys-model_3param((p0,p1, p2), xs_train,xerr_train)))
     
     return MAP_GP, MAP_sig, MAP_bkg
