@@ -12,7 +12,7 @@ import random
 
 #importing functions from Libplotmeghan
 from classDataSetCollection import *
-from Libplotmeghan import get_xy_pts,getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne,logLike_gp_fitgpsig, fit_gp_fitgpsig_minuit, model_3param,logLike_gp_sig_fixedH, fit_gp_sig_fixedH_minuit,logLike_gp_sig_fixedH, sig_model,logLike_gp_customSigTemplate, fit_gp_customSig_fixedH_minuit,customSignalModel
+from Libplotmeghan import get_xy_pts,getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne,logLike_gp_sigRecon, fit_gp_sigRecon, model_3param,logLike_gp_sig_fixedH, fit_gp_sig_fixedH_minuit,logLike_gp_sig_fixedH, sig_model,logLike_gp_customSigTemplate, fit_gp_customSig_fixedH_minuit,customSignalModel
 
 
 
@@ -65,7 +65,7 @@ class signalDataSet():
 
         #print best_vals
 
-    def doReconstructedSignal(self,option="GPSigKernel", trial=100):
+    def doReconstructedSignal(self,option="GPSigKernel", trial=1):
         self.trial=trial
         if option=="GPSigKernel":
             return self.reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams,trial)
@@ -77,9 +77,10 @@ class signalDataSet():
 
     def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams,trial):
         Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
-        lnProb = logLike_gp_fitgpsig(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
-        print("test: ",lnProb(Amp, decay, length, power, sub, p0, p1, p2))
-        bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
+        lnProb = logLike_gp_sigRecon(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
+        print("test: ",lnProb(10000000, 500, 100))
+        #bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
+        bestval, best_fit_new = fit_gp_sigRecon( lnProb, trial=1, Print=False)
         A, mass, tau = best_fit_new
         kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
         kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)

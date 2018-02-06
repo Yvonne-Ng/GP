@@ -606,49 +606,49 @@ def fit_3ff(num,lnprob, Print=True):
     return minLLH, best_fit_params
 
 #------Fixed Param for signal reconstruction
-#class logLike_gp_fitgpsig:
-#    def __init__(self, x, y, xerr,fixedHyperparams):
-#        self.x = x
-#        self.y = y
-#        self.xerr = xerr
-#        self.fixedHyperparams=fixedHyperparams
-#    def __call__(self, A, mass, tau):
-#        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
-#        kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
-#        kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
-#        #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
-#        kernel = kernel1+kernel2
-#        gp = george.GP(kernel)
-#        try:
-#            gp.compute(self.x, np.sqrt(self.y))
-#            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr))
-#        except:
-#            return np.inf  
+class logLike_gp_sigRecon:
+    def __init__(self, x, y, xerr,fixedHyperparams, weight ):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+        self.fixedHyperparams=fixedHyperparams
+    def __call__(self, A, mass, tau):
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
+        kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
+        kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
+        #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
+        kernel = kernel1+kernel2
+        gp = george.GP(kernel)
+        try:
+            gp.compute(self.x, np.sqrt(self.y))
+            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr))
+        except:
+            return np.inf  
 #        
-#def fit_gp_fitgpsig_minuit(lnprob, Print = True):
-#    bestval = np.inf
-#    bestargs = (0, 0, 0)
-#    passedFit = False
-#    numRetries = 0
-#    for i in range(100):
-#        init0 = np.random.random() * 3000.
-#        init1 = np.random.random() * 3000.
-#        init2 = np.random.random() * 200.
-#        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
-#                  A = init0, mass = init1, tau = init2, 
-#                  error_A = 1., error_mass = 1., error_tau = 1.,
-#                  limit_A = (1, 1e5), limit_mass = (1000, 7000), limit_tau = (100, 500))
-#        fit = m.migrad()
-#        if m.fval < bestval:
-#            bestval = m.fval
-#            bestargs = m.args   
-#            print (bestargs)
-#
-#    if Print:
-#        print ("min LL", bestval)
-#        print ("best fit vals",bestargs)
-#    return bestval, bestargs
-#
+def fit_gp_sigRecon(lnprob,trial=1, Print = True):
+    bestval = np.inf
+    bestargs = (0, 0, 0)
+    passedFit = False
+    numRetries = 0
+    for i in range(trial):
+        init0 = np.random.random() * 3000.
+        init1 = np.random.random() * 3000.
+        init2 = np.random.random() * 200.
+        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
+                  A = init0, mass = init1, tau = init2, 
+                  error_A = 1., error_mass = 1., error_tau = 1.,
+                  limit_A = (1, 1e5), limit_mass = (1000, 7000), limit_tau = (100, 500))
+        fit = m.migrad()
+        if m.fval < bestval:
+            bestval = m.fval
+            bestargs = m.args   
+            print (bestargs)
+
+    if Print:
+        print ("min LL", bestval)
+        print ("best fit vals",bestargs)
+    return bestval, bestargs
+
 #
 #-------UA2
 def model_UA2(t, params, xErr):
