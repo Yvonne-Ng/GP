@@ -12,7 +12,7 @@ import random
 
 #importing functions from Libplotmeghan
 from classDataSetCollection import *
-from Libplotmeghan import get_xy_pts,getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne,logLike_gp_sigRecon, fit_gp_sigRecon, model_3param,logLike_gp_sig_fixedH, fit_gp_sig_fixedH_minuit,logLike_gp_sig_fixedH, sig_model,logLike_gp_customSigTemplate, fit_gp_customSig_fixedH_minuit,customSignalModel
+from Libplotmeghan import get_xy_pts,getDataPoints,dataCut, removeZeros,makeToys,y_bestFit3Params, y_bestFitGP, res_significance, significance, runGP_SplusB,logLike_3ffOff, gaussian, resSigYvonne,logLike_gp_sigRecon, logLike_gp_sigRecon_diffLog,fit_gp_sigRecon, model_3param,logLike_gp_sig_fixedH, fit_gp_sig_fixedH_minuit,logLike_gp_sig_fixedH, sig_model,logLike_gp_customSigTemplate_diffLog, fit_gp_customSig_fixedH_minuit,customSignalModel
 
 
 
@@ -62,6 +62,8 @@ class signalDataSet():
         self.sig['sigPlusBkgPrediction'], self.sig['Sig_GPSigKernel'], self.sig['bkgOnlyGPPred']=self.doReconstructedSignal("GPSigKernel")
         self.sig['Gaussian']=self.doReconstructedSignal("Gaussian")
         self.sig['custom']=self.doReconstructedSignal("custom")
+        #self.sig['customTest']=self.yTemplate*4618.06
+        #self.sig['customTest']=self.yTemplate
 
         #print best_vals
 
@@ -77,10 +79,13 @@ class signalDataSet():
 
     def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams,trial):
         Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
-        lnProb = logLike_gp_sigRecon(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
-        print("test: ",lnProb(10000000, 500, 100))
+        lnProb = logLike_gp_sigRecon_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, self.sigBkgDataSet.yerrData,fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
+        print("test: ",lnProb(10000000, 500, 90))
+        print("test2: ", lnProb(27154783.863321707, 450.00009536740134, 34.645598535196655))
         #bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
-        bestval, best_fit_new = fit_gp_sigRecon( lnProb, trial=1, Print=False)
+        bestval, best_fit_new = fit_gp_sigRecon( lnProb, trial=20, Print=False)
+        print("reconstruction bestfit: ", best_fit_new)
+        print("logLikelihood",bestval)
         A, mass, tau = best_fit_new
         kernel2 = A * ExpSquaredCenteredKernel(m = mass, t = tau)
         kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
@@ -88,7 +93,7 @@ class signalDataSet():
         gp = george.GP(kernel)
         gp.compute(self.sigBkgDataSet.xData, self.sigBkgDataSet.yerrData)
         meanGPp = gp.predict( self.sigBkgDataSet.yData - model_3param((p0,p1,p2),self.sigBkgDataSet.xData,self.sigBkgDataSet.xerrData), self.sigBkgDataSet.xData)[0]
-        meanGP = meanGPp + model_3param((p0,p1,p2),self.sigBkgDataSet.xData,self.sigBkgDataSet.xerrData)
+        sigPlusBkgGPGuess = meanGPp + model_3param((p0,p1,p2),self.sigBkgDataSet.xData,self.sigBkgDataSet.xerrData)
         gp2 = george.GP(kernel)
         gp2.compute(self.sigBkgDataSet.xData, np.sqrt(self.sigBkgDataSet.yData))
         K1 = kernel1.get_value(np.atleast_2d(self.sigBkgDataSet.xData).T)
@@ -100,28 +105,24 @@ class signalDataSet():
 
 
         #print("np.dot", np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData))))
-        mu1 = np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData))) + model_3param((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)
-        mu2 = np.dot(K2, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)))
-        return mu1, mu2, meanGP
+        bkgGPGuess = np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData))) + model_3param((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)
+        sigGPGuess = np.dot(K2, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)))
+        return sigPlusBkgGPGuess, sigGPGuess, bkgGPGuess
         
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
          lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
          bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, False)
-         print("got here")
+         #print("got here")
          #if np.isinf(bestval): continue 
          N, M, W = best_fit
          ySig=sig_model(self.sigBkgDataSet.xData, N, M, W, self.sigBkgDataSet.xerrData)
          return ySig
 
     def reconstructSignalCustomSignalTemplate(self,fixedBkgKernelHyperParams):
-        #f1=TFile.Open("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.root", "READ")
-        #h1=f1.Get("reweighted_Ph100_ZPrimemR500_gSM0p3")
-        #h1=h1.Scale(1/h1.Integral())
-        #print("h1 area: ", h1.Integral())
-        #self.signalTemplate=h1
 
         xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.h5", "", "reweighted_Ph100_ZPrimemR500_gSM0p3")
-        xTemplate, yTemplate, xerrTemp, yerrTemp =dataCut(300, 1500, 0, xTemplate, yTemplate, xerrTemp, yerrTemp )
+        print("precutxTemp: ", xTemplate)
+        xTemplate, yTemplate, xerrTemp, yerrTemp =dataCut(300, 1500, -1, xTemplate, yTemplate, xerrTemp, yerrTemp )
         norm=np.ndarray.sum(yTemplate)
         print("xData", self.sigBkgDataSet.xData)
         print("xTempl: ", xTemplate)
@@ -129,13 +130,14 @@ class signalDataSet():
         print("norm: ", norm)
 
         yNorm=yTemplate/norm
+        #self.yTemplate=yNorm
+        self.yTemplate=yTemplate*10
         print("yNom: ", yNorm)
-        lnProb=logLike_gp_customSigTemplate(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,xTemplate, yNorm,self.fixedBkgKernelHyperParams)
+        lnProb=logLike_gp_customSigTemplate_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,xTemplate, yNorm,self.fixedBkgKernelHyperParams, self.sigBkgDataSet.weight, bkg=self.sig['bkgOnlyGPPred'])
+        print("testnormnew: ", lnProb(46180))
         bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb)
         N=best_fit
-        print("got here")
         ySig=customSignalModel(N, yNorm)
-        print("got there")
         return ySig
         
     def print(self):

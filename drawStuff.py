@@ -60,7 +60,7 @@ def drawAllSignalFit(signalBkgDataSet, asignalDataSet, doLog=False, saveTxt=Fals
     title=title+"allSignalFit"
     with Canvas(f'%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.k', label="signal MC injected") # drawing the points
-        can.ax.set_ylim(0.1,1000.0)
+        can.ax.set_ylim(0.1,15000.0)
         if doLog:
             can.ax.set_yscale('log')
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGaussianFit, '-r', label="Signal point Gaussian Fit(injected signal)")
@@ -198,23 +198,19 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
     title=title+"allSignalFit"
     with Canvas(f'%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.k', label="signal MC injected") # drawing the points
-        can.ax.set_ylim(0.1,10000.0)
+        can.ax.set_ylim(0.1,15000.0)
         if doLog:
             can.ax.set_yscale('log')
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGaussianFit, '-r', label="Signal point Gaussian Fit(injected signal)")
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGPSubtractionFit, '-g', label="Signal GP Fit subtraction")
-        #can.ax.plot(signalBkgDataSet.xData, signalBkgDataSet.MAP_sig, '-b', label="Signal GP reconstructed Fit")
-        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['GPSigKernel'],'-b', label="Signal GP Kernel reconstructed Fit")
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Gaussian Fit")
         print(asignalDataSet.sig['custom'])
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-b', label="Signal GP Kernel reconstructed signal template Fit")
+        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['customTest'],'-k', label="Signal GP Kernel reconstructed signal template Fit default")
 
-        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed custom Fit")
-        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-m', label="Signal GP Kernel reconstructed Fit")
 
-        #can.axplot(signalBkgDataset.xData, asignalDataSet.yReconsturcted)
         can.ax.legend(framealpha=0)
         #can.ratio.stem(signalBkgDataSet.xData, asignalDataSet.gaussianFitSignificance, markerfmt='.', basefmt=' ')
-        can.ratio.axhline(0, linewidth=1, alpha=0.5)
+        #can.ratio.axhline(0, linewidth=1, alpha=0.5)
         #can.ax.plot(xSB, ymuGP_KernBkg_SB, '-g', label="GP bkgnd kernel") #drawing 
         can.save(title)

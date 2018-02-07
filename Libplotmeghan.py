@@ -607,11 +607,16 @@ def fit_3ff(num,lnprob, Print=True):
 
 #------Fixed Param for signal reconstruction
 class logLike_gp_sigRecon:
-    def __init__(self, x, y, xerr,fixedHyperparams, weight ):
+    def __init__(self, x, y, xerr,yerr,fixedHyperparams, weight=None ):
         self.x = x
         self.y = y
         self.xerr = xerr
+        self.yerr = yerr
         self.fixedHyperparams=fixedHyperparams
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
     def __call__(self, A, mass, tau):
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
         kernel1 = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d=sub)
@@ -619,25 +624,59 @@ class logLike_gp_sigRecon:
         #kernel2 = 1 * ExpSquaredCenteredKernel(2, 3)
         kernel = kernel1+kernel2
         gp = george.GP(kernel)
+        #seriously, why are we using the log likelihood of gp???
         try:
-            gp.compute(self.x, np.sqrt(self.y))
-            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr))
+            if weight is not None:
+                gp.compute(self.x, self.yerr)
+            else:
+                gp.compute(self.x, np.sqrt(self.y))
+            return -gp.lnlikelihood(self.y/weight - model_gp((p0,p1,p2), self.x, self.xerr)/weight)
         except:
             return np.inf  
-#        
-def fit_gp_sigRecon(lnprob,trial=1, Print = True):
+
+class logLike_gp_sigRecon_diffLog:
+    def __init__(self, x, y, xerr,yerr,fixedHyperparams, weight=None ):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+        self.yerr = yerr
+        self.fixedHyperparams=fixedHyperparams
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+
+    def __call__(self, A, mass, tau):
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
+        bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
+        logL=0
+        
+        print("yWeight: ", self.weight)
+        for ibin in range(len(self.y)):
+            data = self.y[ibin]
+            bkg = bkgFunc[ibin]
+            binWeight = self.weight[ibin] 
+            logL += -simpleLogPoisson(data/binWeight, bkg/binWeight)
+        try:
+            logL
+            return logL
+        except:
+            return np.inf
+
+
+def fit_gp_sigRecon(lnprob,trial=50, Print = True):
     bestval = np.inf
     bestargs = (0, 0, 0)
     passedFit = False
     numRetries = 0
     for i in range(trial):
-        init0 = np.random.random() * 3000.
-        init1 = np.random.random() * 3000.
-        init2 = np.random.random() * 200.
+        init0 = np.random.random() * 1e9
+        init1 = np.random.random() * 550
+        init2 = np.random.random() * 120
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   A = init0, mass = init1, tau = init2, 
                   error_A = 1., error_mass = 1., error_tau = 1.,
-                  limit_A = (1, 1e5), limit_mass = (1000, 7000), limit_tau = (100, 500))
+                  limit_A = (1e4, 1e9), limit_mass = (450, 550), limit_tau = (30, 120))
         fit = m.migrad()
         if m.fval < bestval:
             bestval = m.fval
@@ -848,7 +887,7 @@ def fit_gp_sig_fixedH_minuit(lnprob, Print = True):
 #    return N*(np.exp(-(x-mass)**2/2/width/width)/np.sqrt(2*np.pi)/width)*xErr
 def customSignalModel(N, yTemp):
     #probably don't need x? 
-    N=40000
+    #N=40000
     return N* yTemp
 
 class logLike_gp_customSigTemplate:
@@ -861,7 +900,7 @@ class logLike_gp_customSigTemplate:
         self.yTempNorm= yTempNorm
         self.fixedHyper=fixedHyper
 
-    def __call__(self, Num=40000):
+    def __call__(self, Num):
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values()
         kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
         gp = george.GP(kernel)
@@ -873,25 +912,66 @@ class logLike_gp_customSigTemplate:
             print("yNorm:", self.yTempNorm)
             print("N: ", Num)
             print("signal: ", signal)
+            #perhaps the lnlikelihood becasme -ve here and is undefined 
             return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr)-signal)
         except:
             return np.inf        
 
-    
+class logLike_gp_customSigTemplate_diffLog:
+    def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper,weight=None, bkg=None):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+        self.xTemplate=xTemplate
+        self.yTempNorm= yTempNorm
+        self.fixedHyper=fixedHyper
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+        if bkg is not None:
+            print("new bkg")
+            self.bkgFunc=bkg
+        else:
+            self.bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
+
+    def __call__(self, Num):
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values() #best_fit_gp
+        signal = customSignalModel(Num, self.yTempNorm)
+        print("Num: ", Num)
+        print("signal:", signal)
+        logL=0
+        tetsum=0
+        for ibin in range(len(self.y)):
+            data = self.y[ibin]
+            bkg = self.bkgFunc[ibin]
+            sig = signal[ibin]
+            binWeight = self.weight[ibin] 
+            #print("data/binweight-(bkg+sig)/binWeight", data/binWeight- (bkg+sig)/binWeight)
+            testSum=data/binWeight- (bkg+sig)/binWeight
+            logL += -simpleLogPoisson(data/binWeight, (bkg+sig)/binWeight)
+        print("logL: ", logL)
+        print("testSum: ", testSum)
+        try:
+            logL
+            return logL
+        except:
+            return np.inf
+
 def fit_gp_customSig_fixedH_minuit(lnprob, Print = True):
     bestval = np.inf
     bestargs = (0, 0, 0, 0)
     passedFit = False
     numRetries = 0
     for i in range(100):
-        init0 = np.random.random() * 50000.
+        init0 = np.random.random() * 500000.
         print("init0: ", init0)
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   Num = init0,  
                   error_Num = 1.,
-                  limit_Num = (40000, 50000)) 
-        fit = m.migrad()
-        if m.fval < bestval:
+                  limit_Num = (400, 500000)) 
+        m.migrad()
+        if m.fval < bestval and m.fval!=0.0:
             bestval = m.fval
             bestargs = m.args     
         print("log likelihood: ", m.fval)
