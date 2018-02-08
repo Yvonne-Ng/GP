@@ -57,7 +57,9 @@ class FitFunction():
             if self.functionChoice==0:
                 return self.UAFitFunction()
             if self.functionChoice==1:
-                self.std4ParamsFit()
+                return self.std4ParamsFit()
+            if self.functionChoice==2:
+                return self.Param3Fit()
             self.doneFit=True
         else:
             print("can't doFit, you haven't grabbed data yet!")
@@ -77,7 +79,15 @@ class FitFunction():
         return fit_mean 
 
     def Param3Fit(self):
-        lnProb=logLike_3ff(self.xData, self.yData, self.xerrData)
+
+        if self.useScaled==False:
+            lnProb=logLike_3ff(self.xData, self.yData, self.xerrData, weight =self.weight)
+        else:
+            lnProb=logLike_3ff(self.xData, self.yData, self.xerrData)
+        minimumLLH, best_fit_params = fit_3ff(self.trial,  lnProb,initParam=self.fitParam, initRange=self.rangeFitParam)
+        fit_mean=model_3param(best_fit_params, self.xData, self.xerrData)
+        print("fit mean: ", fit_mean)
+        return fit_mean
 
     def std4ParamsFit(self):
         #----4 param fit function

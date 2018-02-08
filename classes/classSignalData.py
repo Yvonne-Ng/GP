@@ -32,9 +32,10 @@ import string
 
 
 class signalDataSet():
-    def __init__(self,signalBkgDataSet, bkgDataSet , useScaled=False): 
+    def __init__(self,signalBkgDataSet, bkgDataSet , trialAll=1, useScaled=False): 
         #make sure the size of both data matches 
         # finding the raw data points
+        self.trial=trialAll
         if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
             print("Error, xBkg and xBkgbk value are different")
             return  1
@@ -58,7 +59,6 @@ class signalDataSet():
         self.sig={}
         # SIGNAL RECONSTRUCTION USING OFFICIAL CODE 
         self.fixedBkgKernelHyperParams=bkgDataSet.bestFit_GPBkgKernelFit
-        print("bkggdKernelHyperParams:",bkgDataSet.bestFit_GPBkgKernelFit)
         self.sig['sigPlusBkgPrediction'], self.sig['Sig_GPSigKernel'], self.sig['bkgOnlyGPPred']=self.doReconstructedSignal("GPSigKernel")
         self.sig['Gaussian']=self.doReconstructedSignal("Gaussian")
         self.sig['custom']=self.doReconstructedSignal("custom")
@@ -67,23 +67,22 @@ class signalDataSet():
 
         #print best_vals
 
-    def doReconstructedSignal(self,option="GPSigKernel", trial=1):
-        self.trial=trial
+    def doReconstructedSignal(self,option="GPSigKernel"):
         if option=="GPSigKernel":
-            return self.reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams,trial)
+            return self.reconstructSignalGPSignalKernel(self.fixedBkgKernelHyperParams)
         if option=="Gaussian":
             return self.reconstructSignalGaussianTemplate(self.fixedBkgKernelHyperParams)
         if option=="custom":
             return self.reconstructSignalCustomSignalTemplate(self.fixedBkgKernelHyperParams)
         
 
-    def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams,trial):
+    def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams):
         Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
         lnProb = logLike_gp_sigRecon_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData, self.sigBkgDataSet.yerrData,fixedBkgKernelHyperParams,weight= self.sigBkgDataSet.weight)
-        print("test: ",lnProb(10000000, 500, 90))
-        print("test2: ", lnProb(27154783.863321707, 450.00009536740134, 34.645598535196655))
+        #print("test: ",lnProb(10000000, 500, 90))
+        #print("test2: ", lnProb(27154783.863321707, 450.00009536740134, 34.645598535196655))
         #bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
-        bestval, best_fit_new = fit_gp_sigRecon( lnProb, trial=20, Print=False)
+        bestval, best_fit_new = fit_gp_sigRecon( lnProb, self.trial, Print=False)
         print("reconstruction bestfit: ", best_fit_new)
         print("logLikelihood",bestval)
         A, mass, tau = best_fit_new
@@ -111,7 +110,7 @@ class signalDataSet():
         
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
          lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
-         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, False)
+         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.trial, False)
          #print("got here")
          #if np.isinf(bestval): continue 
          N, M, W = best_fit
@@ -135,7 +134,7 @@ class signalDataSet():
         print("yNom: ", yNorm)
         lnProb=logLike_gp_customSigTemplate_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,xTemplate, yNorm,self.fixedBkgKernelHyperParams, self.sigBkgDataSet.weight, bkg=self.sig['bkgOnlyGPPred'])
         print("testnormnew: ", lnProb(46180))
-        bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb)
+        bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb,self.trial)
         N=best_fit
         ySig=customSignalModel(N, yNorm)
         return ySig

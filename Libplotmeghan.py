@@ -271,7 +271,7 @@ def fit_gp_minuit(num, lnprob):
         iamp = np.random.random() * 2*guesses['amp']
         idecay = np.random.random() * 0.64
         ilength = np.random.random() * 5e5
-        ipower = np.random.random() * 1.0
+        ipower = np.random.random() * 1000
         isub = np.random.random() * 1.0
         ip0 = guesses['p0']
         ip1 = guesses['p1']
@@ -295,8 +295,9 @@ def fit_gp_minuit(num, lnprob):
                    error_p0 = 1e-2, error_p1 = 1e-2, error_p2 = 1e-2,
                    limit_Amp = bound('amp'),
                    limit_decay = (0.01, 1000),
-                   limit_length = (100000, 1e8),
-                   limit_power = (0.0001, 100),
+                   limit_length = (5000000, 1e8),
+                   #limit_power = (0.0001, 100),
+                   limit_power = (800, 1000),
                    limit_sub = (0.001, 1e6),
                    limit_p0 = (-100,1000000),
                    limit_p1 = (-100,100),
@@ -549,10 +550,14 @@ def model_3param(params,t, xErr):
     return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2) )
 
 class logLike_3ff:
-    def __init__(self, x, y, xe):
+    def __init__(self, x, y, xe,weight):
         self.x = x
         self.y = y
         self.xe = xe
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
     def __call__(self, p0, p1, p2):
         params = p0, p1, p2
         bkgFunc = model_3param(params, self.x,self.xe)       
@@ -560,7 +565,8 @@ class logLike_3ff:
         for ibin in range(len(self.y)):
             data = self.y[ibin]
             bkg = bkgFunc[ibin]
-            logL += -simpleLogPoisson(data, bkg)
+            binWeight = self.weight[ibin] 
+            logL += -simpleLogPoisson(data/binWeight, bkg/binWeight)
         try:
             logL
             return logL
@@ -579,26 +585,33 @@ def logLike_3ffOff(x, y, xFit, yFit, xe):
     except:
         return np.inf
 
-def fit_3ff(num,lnprob, Print=True):
+def fit_3ff(num,lnprob, initParam=None, initRange=None, Print=True):
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
+    initFitParam=[50000000, 200, 300]
+#    initParam=[289.23835739677855, 36.840272925751094, -2.6319426698603223]
+    #initParam=[1072002.0144121815, 75.21331095659207, -0.6270716885884724]
+    initParam=[21446363.154059794, 89.30345184915959, 0.10256264361501621]
     for i in range(num):
-        #init0 =  0.2336
-        #init1 = np.random.random() * 0.46
-        #init2 = np.random.random() * 0.8901
+        #init0 =  np.random.random() *100
+        #init1 = np.random.random() * 100
+        #init2 = np.random.random() * 100
 
-        init0 =  np.random.random() *0.069
-        init1 = np.random.random() * 22.43
-        init2 = np.random.random() * -2.807
-
+        
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
-                  p0 = init0, p1 = init1, p2 = init2,
+                  p0 = initParam[0], p1 = initParam[1], p2 = initParam[2],
+
                   error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, 
-                  limit_p0 = (0, 100.), limit_p1 = (-100., 100.), limit_p2 = (-100., 100.))
+                  limit_p0 = (500000, 50000000.), limit_p1 = (-100., 200.), limit_p2 = (-100., 100.))
         m.migrad()
+        print("LL: ", m.fval)
+        initParam=[x * np.random.random() for x in initFitParam]
+        print("initParam: ", initParam)
         if m.fval < minLLH:
             minLLH = m.fval
             best_fit_params = m.args 
+            initParam=[x * np.random.random() for x in initFitParam]
+            print("initParam: ", initParam)
     if Print:
         print("fit function")
         print ("min LL", minLLH)
@@ -859,12 +872,12 @@ class logLike_gp_sig_fixedH:
         except:
             return np.inf        
         
-def fit_gp_sig_fixedH_minuit(lnprob, Print = True):
+def fit_gp_sig_fixedH_minuit(lnprob, trial, Print = True):
     bestval = np.inf
     bestargs = (0, 0, 0)
     passedFit = False
     numRetries = 0
-    for i in range(1):
+    for i in range(trial):
         init0 = np.random.random() * 5000.
         init1 = np.random.random() * 4000.
         init2 = np.random.random() * 200.
@@ -958,12 +971,12 @@ class logLike_gp_customSigTemplate_diffLog:
         except:
             return np.inf
 
-def fit_gp_customSig_fixedH_minuit(lnprob, Print = True):
+def fit_gp_customSig_fixedH_minuit(lnprob,trial, Print = True):
     bestval = np.inf
     bestargs = (0, 0, 0, 0)
     passedFit = False
     numRetries = 0
-    for i in range(100):
+    for i in range(trial):
         init0 = np.random.random() * 500000.
         print("init0: ", init0)
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
