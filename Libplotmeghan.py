@@ -550,7 +550,7 @@ def model_3param(params,t, xErr):
     return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2) )
 
 class logLike_3ff:
-    def __init__(self, x, y, xe,weight):
+    def __init__(self, x, y, xe,weight=None):
         self.x = x
         self.y = y
         self.xe = xe

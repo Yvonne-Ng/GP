@@ -30,6 +30,7 @@ dataFileHistTemplate='MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_m
 officialFitHistTemplate='basicBkgFrom4ParamFit'
 FIT3_PARS = ['p0','p1','p2']
 
+
 class dataSet: # each class treats a type of data set
     """each dataSet class  makes predictions using 
         1. GP bkgnd Kernel
@@ -38,11 +39,14 @@ class dataSet: # each class treats a type of data set
         4. Official Fit Function 
         5.SWIFT (Coming soon) """
 
+
     def __init__(self, xMinData=None, xMaxData=None, xMinSimpleFit=None, xMaxSimpleFit=None, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate, toy=False, originalSet=None, useScaled=False):
         self.xMinData=xMinData
         self.xMaxData=xMaxData
         self.chi2={}
-
+        if dataFileHist==dataFileHistTemplate:
+            dataFileHist=dataFile.rsplit("/")[-1][:-3]
+            print("histogram: ", dataFileHist)
         if toy==False:
         #Getting Data points
             #print("dataFileName: ",dataFile)

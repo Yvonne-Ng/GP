@@ -21,10 +21,11 @@ def spectrumGlobalFit(config):
 
     Fit=FitFunction(config['fitFunction'])
     Fit.grabNProcessData(mjjData.xMinData, mjjData.xMaxData, mjjData.xData, mjjData.yData, mjjData.xerrData, mjjData.yerrData, useScaled=config['useScaled'], weight=config['weightHist'])
+    print("weight: ",mjjData.weight)
 
-    yFit=Fit.doFit(initFitParam=config['initFitParam'], initRange=config['initRange'], trial=1, useScaled=config['useScaled'])
-    print(yFit)
-
+    yFit=Fit.doFit(initFitParam=config['initFitParam'], initRange=config['initRange'], trial=100, useScaled=config['useScaled'])
+    print("yFit: ",yFit)
+    print("yData: ", mjjData.yData)
 
     sig, chi2=resSigYvonne(yFit,mjjData.yData, config['weightHist'])
     drawFit(mjjData.xData, mjjData.yerrData, mjjData.yData, yFit, sig,config['title'])
@@ -32,15 +33,19 @@ def spectrumGlobalFit(config):
 if __name__=="__main__":
 #-----------a template config file -------#
     config={#-----Title
-            "title": "btagged2testspectrumFile",
-            "useScaled": True, 
+            "title": "trijet1btagged-UA2",
+            "useScaled": False,
             #-----fit range 
+            #"xMinFit": 330,
+            #"xMaxFit": 1359,
+            #"xMinGP": 330,
+            #"xMaxGP": 1359,
             "xMinFit": 300,
             "xMaxFit": 1500,
             "xMinGP": 300,
             "xMaxGP": 1500,
             #-----Spectrum file input 
-            "dataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/dijetgamma_g85_2j65_nbtag2.h5",
+            "dataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/trijet_HLT_j380_nbtag1.h5",
             "dataFileTDir": "", 
             "dataFileHist": "background_mjj_var",
             #------put some placeholder file here

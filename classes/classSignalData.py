@@ -52,7 +52,15 @@ class signalDataSet():
         mean = self.xSigData[self.ySigData.argmax()]
         sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0] 
         init_vals = [peakValue, mean, sigma] 
-        best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
+        try:
+            best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
+        except RuntimeError as fitFAiled:
+            print("warning fit failed")
+            best_vals=-1
+            covar=-1
+
+
+            
         self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
         self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
 
