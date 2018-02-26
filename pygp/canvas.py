@@ -17,6 +17,7 @@ class Canvas:
         self.fig = Figure(figsize)
         self.fig.subplots_adjust(top=0.85)
         self.canvas = FigureCanvas(self.fig)
+        self.ratio=[]
         #grid = GridSpec(2,1, height_ratios=[3,1])
         #self.ax = self.fig.add_subplot(grid[0])
         #self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
@@ -27,7 +28,7 @@ class Canvas:
         self.ax.set_title(title)
         #self.ax.set_xlabel('mjj (GeV)')
         self.ax.set_ylabel('Event count')
-        
+
         self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
         self.ratio.set_title(ratioTitle1)
         self.ratio2 = self.fig.add_subplot(grid[2], sharex=self.ax)
