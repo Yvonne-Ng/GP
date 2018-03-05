@@ -17,7 +17,7 @@ class Canvas:
         self.fig = Figure(figsize)
         self.fig.subplots_adjust(top=0.85)
         self.canvas = FigureCanvas(self.fig)
-        self.ratio=[]
+        self.ratio=[None]*3
         #grid = GridSpec(2,1, height_ratios=[3,1])
         #self.ax = self.fig.add_subplot(grid[0])
         #self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
@@ -29,15 +29,15 @@ class Canvas:
         #self.ax.set_xlabel('mjj (GeV)')
         self.ax.set_ylabel('Event count')
 
-        self.ratio = self.fig.add_subplot(grid[1], sharex=self.ax)
-        self.ratio.set_title(ratioTitle1)
-        self.ratio2 = self.fig.add_subplot(grid[2], sharex=self.ax)
-        self.ratio2.set_title(ratioTitle2)
-        self.ratio2.set_xlabel(r'$m_{jj}$(GeV)', ha='right', x=0.98)
+        self.ratio[0] = self.fig.add_subplot(grid[1], sharex=self.ax)
+        self.ratio[0].set_title(ratioTitle1)
+        self.ratio[1] = self.fig.add_subplot(grid[2], sharex=self.ax)
+        self.ratio[1].set_title(ratioTitle2)
+        self.ratio[1].set_xlabel(r'$m_{jj}$(GeV)', ha='right', x=0.98)
         if ratioNum==3:
-            self.ratio3 = self.fig.add_subplot(grid[3], sharex=self.ax)
-            self.ratio3.set_title(ratioTitle3)
-            self.ratio3.set_xlabel(r'$m_{jj}(GeV)$', ha='right', x=0.98)
+            self.ratio[2] = self.fig.add_subplot(grid[3], sharex=self.ax)
+            self.ratio[2].set_title(ratioTitle3)
+            self.ratio[2].set_xlabel(r'$m_{jj}(GeV)$', ha='right', x=0.98)
         self.out_path = out_path
         self.ext = ext
         #self.fig.show()

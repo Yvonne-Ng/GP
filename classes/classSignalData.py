@@ -23,17 +23,14 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-#for the gaussian fit 
+#for the gaussian fit
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 import string
 
-
-
-
 class signalDataSet():
-    def __init__(self,signalBkgDataSet, bkgDataSet , trialAll=1, useScaled=False): 
-        #make sure the size of both data matches 
+    def __init__(self,signalBkgDataSet, bkgDataSet , trialAll=1, useScaled=False):
+        #make sure the size of both data matches
         # finding the raw data points
         self.trial=trialAll
         if np.any(np.not_equal(signalBkgDataSet.xData,bkgDataSet.xData)):
@@ -44,28 +41,30 @@ class signalDataSet():
             self.ySigData = signalBkgDataSet.yData-bkgDataSet.yData
             self.xSigData = signalBkgDataSet.xData
             self.bkgDataSet=bkgDataSet
-        #GP subtraction fit 
+        #GP subtraction fit
         self.yGPSubtractionFit =signalBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
         self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
         #need to have a very good initial guess in order to have the gaussian converge
         peakValue=self.ySigData.max()
         mean = self.xSigData[self.ySigData.argmax()]
-        sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0] 
-        init_vals = [peakValue, mean, sigma] 
+        sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0]
+        init_vals = [peakValue, mean, sigma]
         try:
             best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
-        except RuntimeError as fitFAiled:
+        except RuntimeError as fitFailed:
             print("warning fit failed")
             best_vals=-1
             covar=-1
+            #return fitFailed
+            raise ValueError("fit failed in signal reconstruction")
+#            return -1
 
-
-            
+        print("best_vals: ", *best_vals)
         self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
         self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
 
         self.sig={}
-        # SIGNAL RECONSTRUCTION USING OFFICIAL CODE 
+        # SIGNAL RECONSTRUCTION USING OFFICIAL CODE
         self.fixedBkgKernelHyperParams=bkgDataSet.bestFit_GPBkgKernelFit
         self.sig['sigPlusBkgPrediction'], self.sig['Sig_GPSigKernel'], self.sig['bkgOnlyGPPred']=self.doReconstructedSignal("GPSigKernel")
         self.sig['Gaussian']=self.doReconstructedSignal("Gaussian")
@@ -82,7 +81,7 @@ class signalDataSet():
             return self.reconstructSignalGaussianTemplate(self.fixedBkgKernelHyperParams)
         if option=="custom":
             return self.reconstructSignalCustomSignalTemplate(self.fixedBkgKernelHyperParams)
-        
+
 
     def reconstructSignalGPSignalKernel(self, fixedBkgKernelHyperParams):
         Amp, decay, length, power, sub, p0, p1, p2 = fixedBkgKernelHyperParams.values()
@@ -105,7 +104,7 @@ class signalDataSet():
         gp2.compute(self.sigBkgDataSet.xData, np.sqrt(self.sigBkgDataSet.yData))
         K1 = kernel1.get_value(np.atleast_2d(self.sigBkgDataSet.xData).T)
         K2 = kernel2.get_value(np.atleast_2d(self.sigBkgDataSet.xData).T)
-        #print("model_3param", self.sigBkgDataSet.yData-model_3param((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData) )  
+        #print("model_3param", self.sigBkgDataSet.yData-model_3param((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData) )
         #print("self.sigBkgDataSet.yData", self.sigBkgDataSet.yData)
         #print("K1: ", K1)
         #print("gpSolver:", gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)))
@@ -115,12 +114,12 @@ class signalDataSet():
         bkgGPGuess = np.dot(K1, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData))) + model_3param((p0,p1, p2), self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)
         sigGPGuess = np.dot(K2, gp2.solver.apply_inverse(self.sigBkgDataSet.yData- model_3param((p0,p1,p2),self.sigBkgDataSet.xData, self.sigBkgDataSet.xerrData)))
         return sigPlusBkgGPGuess, sigGPGuess, bkgGPGuess
-        
+
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
          lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
          bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.trial, False)
          #print("got here")
-         #if np.isinf(bestval): continue 
+         #if np.isinf(bestval): continue
          N, M, W = best_fit
          ySig=sig_model(self.sigBkgDataSet.xData, N, M, W, self.sigBkgDataSet.xerrData)
          return ySig
@@ -146,7 +145,7 @@ class signalDataSet():
         N=best_fit
         ySig=customSignalModel(N, yNorm)
         return ySig
-        
+
     def print(self):
         print("xSigData: ",self.xSigData)
         print("ySigData: ",self.ySigData)

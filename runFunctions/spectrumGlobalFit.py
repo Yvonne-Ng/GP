@@ -9,10 +9,10 @@
 #from drawStuff import drawFit
 from classFitFunction import *
 
-def spectrumGlobalFit(config): 
+def spectrumGlobalFit(config):
     mjjData=dataSet(config['xMinFit'], config['xMaxFit'], config['xMinGP'], config['xMaxGP'], dataFile=config['dataFile'],dataFileDir=config['dataFileTDir'], dataFileHist=config['dataFileHist'],officialFitFile=config['officialFitFile'], useScaled=config['useScaled'])
 
-    # Create a fit function 
+    # Create a fit function
 #----find weight hist
     if not config['useScaled']:
         config['weightHist']=mjjData.weight
@@ -35,7 +35,7 @@ if __name__=="__main__":
     config={#-----Title
             "title": "trijet1btagged-UA2",
             "useScaled": False,
-            #-----fit range 
+            #-----fit range
             #"xMinFit": 330,
             #"xMaxFit": 1359,
             #"xMinGP": 330,
@@ -44,16 +44,16 @@ if __name__=="__main__":
             "xMaxFit": 1500,
             "xMinGP": 300,
             "xMaxGP": 1500,
-            #-----Spectrum file input 
+            #-----Spectrum file input
             "dataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/trijet_HLT_j380_nbtag1.h5",
-            "dataFileTDir": "", 
+            "dataFileTDir": "",
             "dataFileHist": "background_mjj_var",
             #------put some placeholder file here
             "officialFitFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
-            #-----Fit function 
+            #-----Fit function
             "fitFunction": 0, #0: UA2; 1: 4 params
             "initFitParam": None, #None(default): (9.6, -1.67, 56.87,-75.877 )
             "initRange": None} #None(default): [(-100000, 1000000.),(-100., 100.),(-100., 100.),(-100., 100.)]
     spectrumGlobalFit(config)
-            
-    
+
+
