@@ -82,7 +82,6 @@ def getDataPoints(fileName, tDirName, histName):
             x, y, xerr, yerr = get_xy_pts(h5file[histName])
         else:
             x, y, xerr, yerr = get_xy_pts(h5file[tDirName][histName])
-        print("print x in getDataPoints:", x)
         return x, y, xerr, yerr
 
 def significance (xEst, xData, cov_x, yerr): #classical definition of significance
@@ -92,7 +91,6 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
     pvals = []
     zvals = []
     chi2 = 0
-    print("Data: ", Data)
     for i, nD in enumerate(Data):
         nB = Bkg[i]
         if nD != 0:
@@ -111,7 +109,6 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
         else: zval = 0
 
         zvals.append(zval)
-        print(abs(nD))
         if abs(nD)==0.:
             chi2+=2
         else:
@@ -121,10 +118,6 @@ def res_significance(Data,Bkg): #residual definition of signifiance # also calcu
             else :
                 chi2 += 2
 
-        #print("bin: ", i, "nD: ", nD, "nB", nB)
-        #print("((nD - nB) ** 2 / abs(nD))", ((nD - nB) ** 2 / abs(nD)) )
-    #print("length of data: ", len(Data))
-    #print("length of Zval:", len(zvals))
     zvals=np.array(zvals)
     return zvals, chi2
 
@@ -136,7 +129,6 @@ def poissonPVal(d,b):
         answer=ssp.gammainc(d,b)
     else:
         answer=1-ssp.gammainc(d+1,b)
-    #print("poissonPVal: ", answer)
     return answer
 
 def probToSigma(prob):
@@ -144,13 +136,10 @@ def probToSigma(prob):
         return "Yvonne ERROR, prob out of range in probToSigma"
     valtouse = 1-2*prob
     if (valtouse>-1 and valtouse<1) :
-        #print("Yvonne Sigma:", math.sqrt(2.0)*ssp.erfinv(valtouse))
         return math.sqrt(2.0)*ssp.erfinv(valtouse)
     elif (valtouse==1):
-        #print("Yvonne Sigma:", 20)
         return 20
     else:
-        #print("Yvonne Sigma:", 20)
         return -20
 
 def resSigYvonne(Data, Bkg, weight=None):
@@ -176,7 +165,6 @@ def resSigYvonne(Data, Bkg, weight=None):
             frac=frac*-1# what do you do with -frac??
         resultResidual.append(frac)
     chi2=float(chi2Sum)/len(Data)
-    print("chi2: ", chi2)
     return resultResidual, chi2
 
 
@@ -197,12 +185,7 @@ class Mean():
     def get_value(self, t, xErr=[]):
         sqrts = 13000.
         p0, p1, p2 = self.p0, self.p1, self.p2
-        # steps = np.append(np.diff(t), np.diff(t)[-1])
-        # print(steps)
-        #print("size of t",t.shape)
-        #print("size of xErr", xErr.shape)
         vals = (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2))
-        #print(vals)
         return vals
 
 def get_kernel(Amp, decay, length, power, sub): # getting the typical background kernel
@@ -212,14 +195,7 @@ def get_kernel(Amp, decay, length, power, sub): # getting the typical background
 
 def get_kernel_SigOnly(A, mass, tau,l):
     return A* SignalKernel(mass, tau,l)
-#def get_kernel_Xtreme(Amp, decay, length, power, sub, A, mass, tau): # getting the signal+bkgnd kernel
-#    #kernelsig = Amp * ExpSquaredCenteredKernel(m=mass, t=tau)
-#    kernelsig= A* LocalGaussianKernel(mass, tau)
-#    kernelbkg = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
-#    return kernelsig+kernelbkg
-    #return kernelbkg
 def get_kernel_Xtreme(Amp, decay, length, power, sub, A, mass, tau,l): # getting the signal+bkgnd kernel
-    #kernelsig = Amp * ExpSquaredCenteredKernel(m=mass, t=tau)
     kernelsig= A* SignalKernel(mass, tau,l)
     kernelbkg = Amp * MyDijetKernelSimp(a=decay, b=length, c=power, d=sub)
     return kernelsig+kernelbkg
@@ -231,7 +207,6 @@ def get_xy_pts(group):
     errors = np.asarray(group['errors'])
     center = (edges[:-1] + edges[1:]) / 2
     widths = np.diff(edges)
-    print("centers in function: ", center)
     return center, vals[1:-1], widths, errors[1:-1]
 # _________________________________________________________________
 # stuff copied from Meghan
@@ -278,8 +253,6 @@ def fit_gp_minuit(num, lnprob):
         ip0 = guesses['p0']
         ip1 = guesses['p1']
         ip2 = guesses['p2']
-        #print(lnprob)
-        #print(inspect.getargspec(logLike_minuit))
 
         m = Minuit(lnprob, throw_nan = True, pedantic = True,
                    print_level = 0, errordef = 0.5,
@@ -452,7 +425,6 @@ class logLike_gp_fitgpsig:
             self.weight=weight
         else:
             self.weight=np.one(self.x.size)
-        print("self.weight", self.weight)
 
     def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0):
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixParam.values()
@@ -471,45 +443,6 @@ def fit_gp_fitgpsig_minuit(num, lnprob, mass, initParams,Print=True):
     min_likelihood = np.inf
     best_fit_params = (0, 0, 0, 0, 0,0,0,0)
     for i in range(num):
-        #iAmp= np.random.random() *5701461179.0
-        #iDecay = np.random.random() *0.64
-        #ilength = np.random.random() *5e5
-        #ipower =np.random.random() * 1.0
-        #isub= np.random.random() * 1.0
-        ##ip0=np.random.random() * 0.23
-        ##ip1= np.random.random() *0.46
-        ##ip2=np.random.random() *0.89
-        #ip0=np.random.random() * 0.23
-        #ip1= np.random.random() *28.38
-        #ip2=np.random.random() *-2.538
-        #iA = 0
-        #imass=np.random.random() *500
-        #itau= np.random.random() *100000000
-#signal
-        #iAmp= np.random.random() *2880395166.7137227
-        #iDecay =np.random.random() * 24.80421529029139
-        #ilength = np.random.random() *1.0000000666133808
-        #ipower = np.random.random() *0.001
-        #isub= np.random.random() *632.2987
-        #ip0=np.random.random() *7.099
-        #ip1= np.random.random() *19.85
-        #ip2=np.random.random() *-2.24
-        #iA = (np.random.random() *2)*0.000001
-        #imass=np.random.random() *np.random.random() *500
-        #itau= np.random.random() *np.random.random() *100000000
-
-        #iAmp=np.random.random() *2880395166.7137227
-        #iDecay =np.random.random() *24.80
-        #ilength =np.random.random() * 1.00
-        #ipower =np.random.random() * 0.0010
-        #isub= np.random.random() *632.298
-        #ip0=np.random.random() *7.09
-        #ip1=np.random.random() * 19.83
-        #ip2=np.random.random() *-2.24
-        #iA =np.random.random() *0#(np.random.random() *2)*0.000001
-        #imass=np.random.random() *500
-        #itau= np.random.random() *100000000
-
         iAmp=np.random.random() * initParams[0]
         iDecay =np.random.random() * initParams[1]
         ilength =np.random.random() *initParams[2]
@@ -549,9 +482,6 @@ def model_3param(params,t, xErr):
     p0, p1, p2 = params
     sqrts = 13000.
 
-    #return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2)*(xErr) )
-    #print ("p0, p1, p2:", params)
-    #print("t: ", t)
     return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2) )
 
 class logLike_3ff:
@@ -613,7 +543,6 @@ def fit_3ff(num,lnprob, initParam=None, initFitParam=None, initRange=None, Print
         m.migrad()
         print("LL: ", m.fval)
         initParam=[x * np.random.random() for x in initFitParam]
-        print("initParam: ", initParam)
         if m.fval < minLLH:
             minLLH = m.fval
             best_fit_params = m.args
@@ -671,7 +600,6 @@ class logLike_gp_sigRecon_diffLog:
         bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
         logL=0
 
-        print("yWeight: ", self.weight)
         for ibin in range(len(self.y)):
             data = self.y[ibin]
             bkg = bkgFunc[ibin]
@@ -724,16 +652,11 @@ class logLike_UA2:
             self.weight=weight
         else:
             self.weight=np.ones(self.x.size)
-        #print("self.weight", self.weight)
 
     def __call__(self, p0, p1, p2, p3):
         params = p0, p1, p2, p3
         bkgFunc = model_UA2(self.x, params, self.xe)
         logL = 0
-        #print ("dataY: ", self.y)
-        #print ("bkgFunc: ", bkgFunc)
-        #print("dataY/weight: ",self.y/self.weight)
-        #print("bkgFunc/weight: ",bkgFunc/self.weight)
 
         for ibin in range(len(self.y)):
             data = self.y[ibin]
@@ -840,15 +763,6 @@ def fit_4ff(num, lnprob, initParam=None, initFitParam=None, initRange=None,Print
     print("UA fitting using using inital params: ", initParam)
     print("UA fitting using param range: ", initRange)
     for i in range(num):
-        #m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
-        #          p0 = initParam[0], p1 = initParam[1], p2 = initParam[2], p3= initParam[3],
-        #          error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
-        #          limit_p0 = initRange[0], limit_p1 = initRange[1], limit_p2 = initRange[2], limit_p3=initRange[3])
-
-        #m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
-        #           p0=init0, p1=init1, p2=init2, p3=init3,
-        #           error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
-        #           limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
         m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
                 p0=initParam[0], p1=initParam[1], p2=initParam[2], p3=initParam[3],
                    error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
@@ -926,14 +840,9 @@ class logLike_gp_customSigTemplate:
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values()
         kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
         gp = george.GP(kernel)
-        print('yprint')
         try:
             gp.compute(self.x, np.sqrt(self.y))
             signal = customSignalModel(Num, self.yTempNorm)
-            print("self.y - model_gp((p0,p1,p2), self.x, self.xerr)",self.y - model_gp((p0,p1,p2), self.x, self.xerr))
-            print("yNorm:", self.yTempNorm)
-            print("N: ", Num)
-            print("signal: ", signal)
             #perhaps the lnlikelihood becasme -ve here and is undefined
             return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr)-signal)
         except:
@@ -952,7 +861,6 @@ class logLike_gp_customSigTemplate_diffLog:
         else:
             self.weight=np.ones(self.x.size)
         if bkg is not None:
-            print("new bkg")
             self.bkgFunc=bkg
         else:
             self.bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
@@ -969,7 +877,6 @@ class logLike_gp_customSigTemplate_diffLog:
             bkg = self.bkgFunc[ibin]
             sig = signal[ibin]
             binWeight = self.weight[ibin]
-            #print("data/binweight-(bkg+sig)/binWeight", data/binWeight- (bkg+sig)/binWeight)
             testSum=data/binWeight- (bkg+sig)/binWeight
             logL += -simpleLogPoisson(data/binWeight, (bkg+sig)/binWeight)
         print("logL: ", logL)
@@ -987,7 +894,6 @@ def fit_gp_customSig_fixedH_minuit(lnprob, trial, Print = True):
     numRetries = 0
     for i in range(trial):
         init0 = np.random.random() * 5000000000.
-        print("init0: ", init0)
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   Num = init0,
                   error_Num = 1.,
@@ -1015,7 +921,6 @@ def y_bestFit3Params(x, y, xerr, likelihoodTrial):
 def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None, bkgDataParams=None):
     if kernelType=="bkg":
         lnProb = logLike_minuit(x, y, xerr)
-        #print ("in run bkg lnprob:", lnProb)
         min_likelihood, best_fit = fit_gp_minuit(likelihoodTrial, lnProb)
         #print(best_fit)
         if bkgDataParams:
@@ -1029,7 +934,6 @@ def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None
             kargs = {x:y for x, y in best_fit.items() if x not in FIT3_PARS}
     #bkgnd kernel
         kernel = get_kernel(**kargs)
-        print(kernel.get_parameter_names())
 #
     elif kernelType =="sig":
         #lnProb = logLike_minuit_sig(x, y, xerr)
@@ -1043,7 +947,6 @@ def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None
 
 #-----specific setup for example mR500
             #min_likelihood, best_fit = fit_gpSig_minuit(likelihoodTrial, lnProb, (9424207558.974304, 23.36140499375173, 212320.71588945185, 0.934086263121374, 677.3782035685553,5.835978239102488, 19.11598702209463, -2.3008859313936085))
-            #print(list(bkgDataParams.values()))
             min_likelihood, best_fit = fit_gpSig_minuit(likelihoodTrial, lnProb, mass, list(bkgDataParams.values()))
             print ("min likelihood:", min_likelihood)
             print(best_fit)

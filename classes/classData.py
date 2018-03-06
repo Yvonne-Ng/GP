@@ -47,7 +47,6 @@ class dataSet: # each class treats a type of data set
         if toy==False:
         #Getting Data points
             self.xRaw, self.yRaw, self.xerrRaw, self.yerrRaw = getDataPoints(dataFile, dataFileDir, dataFileHist)
-            print("print xDataRaw:", self.xRaw)
             self.xRawOffFit, self.yRawOffFit, self.xerrRawOffFit, self.yerrRawOffFit = getDataPoints(officialFitFile, officialFitDir, officialFitHist)
             if useScaled:
                 self.yerrRaw=np.sqrt(self.yRaw)
@@ -59,9 +58,6 @@ class dataSet: # each class treats a type of data set
                 self.weight=np.square(self.yerrData)/self.yData
             else:
                 self.weight=np.ones(self.yData.shape)
-            print("print xData:", self.xData)
-            print("yErr:", self.yerrData)
-            print("yErrScaled: ", np.sqrt(self.yData))
             #Simple fit range
             self.x_simpleFit, self.y_simpleFit, self.xerr_simpleFit, self.yerr_simpleFit= dataCut(xMinSimpleFit, xMaxSimpleFit, 0, self.xRaw, self.yRaw,self.xerrRaw,self.yerrRaw) # for fit function
             #Official Fit (Already cut out in root file )
@@ -100,18 +96,6 @@ class dataSet: # each class treats a type of data set
 
         self.xPred=np.asarray(self.xPred)
         self.xPred_width=np.asarray(self.xPred_width)
-
-        print("xPred size: ", np.size(self.xPred))
-        print("xPred size: ", np.size(self.xPred_width))
-        print("xPred:", self.xPred)
-        print("xPredWidth: ", self.xPred_width)
-
-
-        #self.xerr_gPPred=self.x_gPPred[1:]-self.x_gPPred[:-1]
-        #print("size of xerr_gPPred: ",np.size(self.xerr_gPPred))
-        #self.xerr_gPPred=np.append(self.xerr_gPPred, self.xerr_gPPred[-1])
-        #print("size of xerr_gPPred: ",np.size(self.xerr_gPPred))
-
 
         # boolean counter to see if cetain things are done
         simpleFitDone=False
@@ -156,7 +140,6 @@ class dataSet: # each class treats a type of data set
         simpleFitDone=True
         self.yFit_simpleFit=y_bestFit3Params(self.x_simpleFit, self.y_simpleFit, self.xerr_simpleFit, trial)
         ### add parameter
-        print("Check: ", self.x_simpleFit)
         #self.significance_simpleFit, self.chi2['simpleFit']=res_significance(self.y_simpleFit, self.yFit_simpleFit)
         self.significance_simpleFit, self.chi2['simpleFit']=resSigYvonne(self.y_simpleFit, self.yFit_simpleFit)
         if doPrint:
@@ -222,58 +205,15 @@ class dataSet: # each class treats a type of data set
 
 
 
-        # Reconstruction
-        #fit range needs to be different from train range
-        #self.runGP_SplusB(self.ySigData, self.xSigData, self.xerr
-
-#def y_signalData(signalBkgDataSet, bkgDataSet):
-#
-#
-#def y_signalGPSubtractionFit(signalBkgDataSet, doPrint=False):
-#    Fit =sigBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
-#    if doPrint:
-#        print (" y_signalalGPSubtractionFit: ", Fit)
-#    return
-#
-#def y_signalGaussianFit(signalBkgDataSet, ySignalData, doPrint):
-#    p_initial = [1.0, 0.0, 0.1, 0.0]
-#    popt, pcov = curve_fit(gauss, signalBkgDataSet.xData, ySignalData, p0=p_initial, sigma=signalBkgDataSet.yerrData)
-#    Fit=gauss(xData, *popt)
-#    if doPrint:
-#        print("y signal Gaussian Fit: ", Fit)
-#    return Fit
-
-#making toy
-
-# list of data
-#obsolete
-#def makeToyDataSetList(dataSetOriginal, nToy=1):
-#    toyDataSetList=[]
-#    for i in range(nToy):
-#        toyDataSetList.append(dataSet(toy=True, originalSet= dataSetOriginal))
-#    return toyDataSetList
-#
-#def listOfChi2(listOfDataSet, fit="simpleFit"):
-#    listOfChi2=[]
-#    for dataSet in listOfDataSet:
-#        listOfChi2.append(dataSet.chi2[fit])
-#    return listOfChi2
 
 
-
-#def yGPSignalReconstructed_dataSBMinusB(dataSet):
-#    MAP_GP, MAP_sig, MAP_bkg=runGP_SplusB(dataSet.yData, data.xData, self.xerrData,self.x_gPPred, self.xerr_gPPred, hyperParams)
-#
-
-
-def fit(config):
+def fit(config):  #where is this used?
     bkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['bkgndDataFile'],dataFileDir=config['bkgFileDir'], dataFileHist=config['bkgDataFileHist'],officialFitFile=config['bkgOffFitFile'])
     bkgndData.fitAll( trialAll=config['trialBkg'])
 
 #--------Dataset: signal plus bkgnd Data
     for mulFac in [1,2, 5, 10, 20]:
         print("multiplication factor", mulFac)
-
         dataFileString=config['signalPlusBkgFileTemp']
 
         dataFileString=dataFileString.replace("FFF", str(mulFac))
@@ -281,11 +221,8 @@ def fit(config):
 
         signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['sigplusBkgTempDir']+dataFileString, dataFileHist=dataFileString[:-3],officialFitFile=config['sigPlusBkgOffFitFile'])
         signalInjectedBkgndData.fitAll(trialAll=config['trialSigPlusBkg'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
-        #signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
 #-----Draw stuff
         title=config['title']+str(mulFac)
-        #drawSignalGaussianFit(signalInjectedBkgndData, signalData1, title=title)
-        #drawAllSignalFit(signalInjectedBkgndData, signalData1, title=title)
         drawFitDataSet(signalInjectedBkgndData, "SignalinjectedBkgi_"+title)
     drawFitDataSet(bkgndData, config['bkgTitle'], saveTxt=True, saveTxtDir="../txt/BkgData")
 
@@ -300,71 +237,10 @@ if __name__=="__main__":
     print("----------------------")
     print("----------------------")
 
-    #configBkg={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",
-    #        "bkgFileDir": "dijetgamma_g85_2j65",
-    #        "bkgDataFileHist": "Zprime_mjj_var",
-    #        "bkgOffFitFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
-    #        "xMin": 300,
-    #        "xMax": 1500,
-    #        "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/",
-    #        "signalPlusBkgFileTemp": "MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
-    #        "sigPlusBkgOffFitFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
-    #        "trialBkg":1,
-    #        "trialSigPlusBkg": 1,
-    #        "title":"mc_bkgsig_sigmul",
-    #        "bkgTitle": "MC_Bkg"}
-    #
-    #fit(configBkg)
-
-    #configSig={"bkgndDataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/data2016.h5",
-    #        "bkgFileDir": "",
-    #        "bkgDataFileHist": "Zprime_mjj_var",
-    #        "bkgOffFitFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys//data/all/Step1_SearchPhase_Zprime_mjj_var.h5",
-    #        "xMin": 300,
-    #        "xMax": 1500,
-    #        "sigplusBkgTempDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/data/",
-    #        "signalPlusBkgFileTemp": "Data_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5",
-    #        "sigPlusBkgOffFitFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5",
-    #        "trialBkg":1,
-    #        "trialSigPlusBkg": 1,
-    #        "title":"data_bkgsig_sigmul",
-    #        "bkgTitle": "Data_Bkg"}
-
-    #fit(configSig)
-##################---------------------MC------------------ ####################
-#---------DataSet MC
-
-#    bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-#    bkgndData.fitAll( trialAll=1)
-#
-##--------Dataset: signal plus bkgnd Data
-#    for mulFac in [1,2, 5, 10, 20]:
-#        print("multiplication factor", mulFac)
-#
-#        dataFileString="MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulXFFF.h5"
-#
-#        dataFileString=dataFileString.replace("FFF", str(mulFac))
-#        print("dataFileString: ",dataFileString)
-#
-#        signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/"+dataFileString, dataFileHist=dataFileString[:-3],officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
-#        signalInjectedBkgndData.fitAll(trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
-#        #signalData1=signalDataSet(signalInjectedBkgndData, bkgndData)
-##-----Draw stuff
-#        title="MC_BkgSig_SigMul"+str(mulFac)
-#        #drawSignalGaussianFit(signalInjectedBkgndData, signalData1, title=title)
-#        #drawAllSignalFit(signalInjectedBkgndData, signalData1, title=title)
-#        drawFitDataSet(signalInjectedBkgndData, "SignalinjectedBkgi_"+title)
-#    drawFitDataSet(bkgndData, "MC_BkgDataFit", saveTxt=True, saveTxtDir="txt/BkgData")
-#
-##################---------------------MC------------------ ####################
-
-
 
 #------- Dataset: signal plus bkgnd Data
     bkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_Dan.h5",dataFileDir="dijetgamma_g85_2j65", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
     bkgndData.fitAll( trialAll=1)
-    #bkgndData=dataSet(300, 1500, 300, 1500, dataFile="data/all/data2016.h5",dataFileDir="", dataFileHist="Zprime_mjj_var",officialFitFile="data/all/Step1_SearchPhase_Zprime_mjj_var.h5")
-    #bkgndData.fitAll( trialAll=1)
 
 ##--------Dataset: signal plus bkgnd Data
     signalInjectedBkgndData=dataSet(300, 1500, 300, 1500, dataFile="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5", officialFitFile="data/all/Step1_SearchPhase_MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX1.h5")
@@ -403,12 +279,3 @@ if __name__=="__main__":
     drawSignalGaussianFit(signalInjectedBkgndData, signalData1)
     drawAllSignalFit(signalInjectedBkgndData, signalData1)
     drawFitDataSet(signalInjectedBkgndData, "TestSignalinjectedBkg")
-#    drawFitDataSet(bkgndData, "Bkg", saveTxt=True, saveTxtDir="txt/BkgData")
-
-#
-#
-### #   def __init__(self, xMinData, xMaxData, xMinSimpleFit, xMaxSimpleFit, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate):
-    ##obsolete
-    ###ySignalData = y_signalData(signalInjectedBkgndData, bkgndData)
-    ##ySignalGPSubtractionFit=y_signalGPSubtractionFit(signalInjectedBkgndData, doPrint=True)
-    ##ySignalGaussianFit=y_signalGaussianFit(doPrint=True)
