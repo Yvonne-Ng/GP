@@ -16,19 +16,21 @@ def signalReconstruction(config):
 
 #----Make a Signal Injected bkgnd Data Set
     signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['sigBkgDir']+config['sigBkgDataFile'], officialFitFile=config['officialFitFile'])
-    signalInjectedBkgndData.fitAll(trialAll=1, bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+    signalInjectedBkgndData.fitAll(trialAll=config['trial'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
     print("signal+bkgnd Data file: ", config['sigBkgDataFile'])
 
 #-----Make a signal Data Set
-    trialNum=1
-    reRun=True
-    while reRun==True:
-        try:
-            signalData1=signalDataSet(signalInjectedBkgndData, bkgndData,trialAll=1)
-        except RuntimeError as signalFitFAiled:
-            pass
-        else:
-            reRun=False
+
+    signalData1=signalDataSet(signalInjectedBkgndData, bkgndData,mass=config['mass'], trialAll=config['trial'], configDict=config)
+    #trialNum=1
+    #reRun=True
+    #while reRun==True:
+    #    try:
+    #        signalData1=signalDataSet(signalInjectedBkgndData, bkgndData,trialAll=config['trial'])
+    #    except RuntimeError as signalFitFAiled:
+    #        pass
+    #    else:
+    #        reRun=False
 
 #TODO add in a signal reconstruction trial #
 
@@ -40,28 +42,34 @@ def signalReconstruction(config):
     significance["sigBkg_GPBkgFit"],chi2["sigBkg_GPBkgFit"] = resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['bkgOnlyGPPred'], signalData1.sigBkgDataSet.weight)
     significance["sigBkg_GPSigBkgFit"],chi2["sigBkg_GPSigBkgFit"] = resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['sigPlusBkgPrediction'], signalData1.sigBkgDataSet.weight)
     print("significacne of bkg ", significance["sigBkg_GPBkgFit"])
+    #----------draw 2 lines, including the bkgnd kernel prediction and the signal + bkgnd kernel prediction
     drawFit2(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'], sig=[significance["sigBkg_GPBkgFit"],significance["sigBkg_GPSigBkgFit"]],signiLegend=["GP Bkg Significance", "GP bkg+Signal Signifiance"], title=config["title"]+"_figure10")
-    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['bkgOnlyGPPred']+signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
+    #----------draw 3 lines, including the bkgnd reconstructed + the signal reconstructed
+    #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['bkgOnlyGPPred']+signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
+    #---------defining significance TODO: move this to the signalDataClass
     significance["sigReconstructedGaussian"], chi2['sigReconstructedGaussian']=resSigYvonne(signalData1.ySigData, signalData1.sig['Gaussian'],signalInjectedBkgndData.weight)
-
     significance["sigReconstructedCustom"], chi2["sigReconstructedCustom"]=resSigYvonne(signalData1.ySigData, signalData1.sig['custom'],signalInjectedBkgndData.weight)
-
     sigLegend=["recon. gaussian", "recon. custom"]
     significanceSignal=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]]
 
+#-----------------draw signal only
+    #-----------draw signal gaussian fit only
     #drawSignalGaussianFit(signalInjectedBkgndData, signalData1, significanceSignal, sigLegned)
 
 #    drawAllSignalFit(signalInjectedBkgndData, signalData1)
+    #---------- draw all signal updated, working version for dijetISR specific needs
     drawAllSignalFitYvonne(signalInjectedBkgndData, signalData1,title=config["title"]+"_gaussian reconstructed",significanceSig=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]],sig=sigLegend)
-    drawFitDataSet(signalInjectedBkgndData, config["title"]+"_TestSignalinjectedBkg")
+#-----------------draw data points only
+    #---------- draw signal +bkgnd MC
+    #drawFitDataSet(signalInjectedBkgndData, config["title"]+"_TestSignalinjectedBkg")
     Amp, decay, length, power, sub, p0, p1, p2=bkgndData.bestFit_GPBkgKernelFit.values()
-    drawFit(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_withSignal")
-    drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_bkg")
-    drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=signalData1.sig['sigPlusBkgPrediction'], sig=None, title=config["title"]+"_signal+BkgPred")
+    #drawFit(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_withSignal")
+    #drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_bkg")
+    #drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=signalData1.sig['sigPlusBkgPrediction'], sig=None, title=config["title"]+"_signal+BkgPred")
 
 if __name__=="__main__":
     config={"title":"testY",
-            "trial":1,
+            "trial":30,
             "xMin":300,
             "xMax":1500,
             #-------signal +bkg data file
@@ -69,8 +77,13 @@ if __name__=="__main__":
             "bkgDataFileTDir":"dijetgamma_g85_2j65",
             "bkgDataFileHist":"Zprime_mjj_var",
             #-------signal +bkg data file
+            "mass": 500, #GeV
             "sigBkgDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/",
             "sigBkgDataFile":"MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5",
+            #------signal template
+            "sigTemplateFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p",
+            "sigTemplateHist": "reweighted_Ph100_ZPrimemR500_gSM0p3",
+
             #-------output
             "outputDir":"./results",
     #-------------------------place holder
@@ -85,8 +98,9 @@ if __name__=="__main__":
     config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
     template="MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5"
     titleTemplate="testY"
+    sigHistTemplate= "reweighted_Ph100_ZPrimemR500_gSM0p3"
     for ptCut in [50, 100]:
-        for mult in [1,10, 20]:
+        for mult in [1,5,10, 20]:
             for resMass in [350, 400, 450, 500, 550, 750, 950]:
                 for coupling in [1,2,3,4]:
                     posCut=template.find("Ph")+2

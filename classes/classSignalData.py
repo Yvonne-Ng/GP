@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import string
 
 class signalDataSet():
-    def __init__(self,signalBkgDataSet, bkgDataSet , trialAll=1, useScaled=False):
+    def __init__(self,signalBkgDataSet, bkgDataSet, mass, trialAll=1, useScaled=False, configDict=None):
         #make sure the size of both data matches
         # finding the raw data points
         self.trial=trialAll
@@ -41,6 +41,8 @@ class signalDataSet():
             self.ySigData = signalBkgDataSet.yData-bkgDataSet.yData
             self.xSigData = signalBkgDataSet.xData
             self.bkgDataSet=bkgDataSet
+            self.mass=mass #signal mass
+            self.configDict=configDict
         #GP subtraction fit
         self.yGPSubtractionFit =signalBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
         self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
@@ -89,7 +91,7 @@ class signalDataSet():
         #print("test: ",lnProb(10000000, 500, 90))
         #print("test2: ", lnProb(27154783.863321707, 450.00009536740134, 34.645598535196655))
         #bestval, best_fit_new = fit_gp_fitgpsig_minuit( trial, lnProb, list(self.bkgDataSet.getGPBkgKernelFitParams().values()), False)
-        bestval, best_fit_new = fit_gp_sigRecon( lnProb, self.trial, Print=False)
+        bestval, best_fit_new = fit_gp_sigRecon( lnProb, self.mass, self.trial, Print=False)
         print("reconstruction bestfit: ", best_fit_new)
         print("logLikelihood",bestval)
         A, mass, tau = best_fit_new
@@ -117,23 +119,26 @@ class signalDataSet():
 
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
          lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
-         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.trial, False)
+         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.mass, self.trial, False)
          #print("got here")
          #if np.isinf(bestval): continue
          N, M, W = best_fit
+         print("gaussian mass reconstructed: ", M)
          ySig=sig_model(self.sigBkgDataSet.xData, N, M, W, self.sigBkgDataSet.xerrData)
          return ySig
 
     def reconstructSignalCustomSignalTemplate(self,fixedBkgKernelHyperParams):
 
-        xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.h5", "", "reweighted_Ph100_ZPrimemR500_gSM0p3")
-        print("precutxTemp: ", xTemplate)
+        if self.configDict==None:
+            xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.h5", "", "reweighted_Ph100_ZPrimemR500_gSM0p3")
+            print("custom signal hist used: DEFAULT")
+        else:
+            print("configDict", self.configDict)
+            print("custom signal hist used: ", self.configDict['sigTemplateHist'])
+            xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints(self.configDict['sigTemplateFile'], "", self.configDict['sigTemplateHist'])
+
         xTemplate, yTemplate, xerrTemp, yerrTemp =dataCut(300, 1500, -1, xTemplate, yTemplate, xerrTemp, yerrTemp )
         norm=np.ndarray.sum(yTemplate)
-        print("xData", self.sigBkgDataSet.xData)
-        print("xTempl: ", xTemplate)
-        print("yTemplate: ", yTemplate)
-        print("norm: ", norm)
 
         yNorm=yTemplate/norm
         #self.yTemplate=yNorm
@@ -141,7 +146,7 @@ class signalDataSet():
         print("yNom: ", yNorm)
         lnProb=logLike_gp_customSigTemplate_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,xTemplate, yNorm,self.fixedBkgKernelHyperParams, self.sigBkgDataSet.weight, bkg=self.sig['bkgOnlyGPPred'])
         print("testnormnew: ", lnProb(46180))
-        bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb,self.trial)
+        bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb, self.trial)
         N=best_fit
         ySig=customSignalModel(N, yNorm)
         return ySig

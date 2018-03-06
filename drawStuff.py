@@ -183,7 +183,7 @@ def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, 
                 if signiLegend!=None:
                     can.ratio[i].set_ylabel(signiLegend[i])
                 can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
-        can.save(title)
+        can.save("results/"+title)
 
 def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, sig=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
@@ -249,4 +249,4 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
             #can.ratio.stem(signalBkgDataSet.xData, asignalDataSet.gaussianFitSignificance, markerfmt='.', basefmt=' ')
             #can.ratio.axhline(0, linewidth=1, alpha=0.5)
             #can.ax.plot(xSB, ymuGP_KernBkg_SB, '-g', label="GP bkgnd kernel") #drawing
-        can.save(title)
+        can.save("results/"+title)
