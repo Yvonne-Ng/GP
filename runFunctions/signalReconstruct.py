@@ -1,11 +1,27 @@
 from Libplotmeghan import *
+import json
 from classData import *
 from classFitFunction import *
 from classSignalData import *
 
 from pathlib import Path
 
+from array import *
+#from Root import TFile, TH1F
 import os.path
+
+#def saveToRoot(fileName,histogramName,x, y, yerr=None):
+#    """Saving result bit by bin as a TH1F histogram in a root file"""
+#    # x, y nd yerr should be an ARRAY
+#    f1=TFile(fileName, "RECREATE") #filename needs to follow a template pattern
+#    h1=TH1F(fileName, fileName,x.length(), x)
+#    h1.Draw()
+#    h1.Save()
+#    f1.Save()
+#    f1.Close()
+#    return 0
+
+#just take in a txt file name instead
 
 def signalReconstruction(config):
 #----Make a bkgnd Data Set
@@ -16,7 +32,7 @@ def signalReconstruction(config):
 
 #----Make a Signal Injected bkgnd Data Set
     signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['sigBkgDir']+config['sigBkgDataFile'], officialFitFile=config['officialFitFile'])
-    signalInjectedBkgndData.fitAll(trialAll=config['trial'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+    signalInjectedBkgndData.fitAll(trialAll=config['trial'],mass=config['mass'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
     print("signal+bkgnd Data file: ", config['sigBkgDataFile'])
 
 #-----Make a signal Data Set
@@ -59,6 +75,41 @@ def signalReconstruction(config):
 #    drawAllSignalFit(signalInjectedBkgndData, signalData1)
     #---------- draw all signal updated, working version for dijetISR specific needs
     drawAllSignalFitYvonne(signalInjectedBkgndData, signalData1,title=config["title"]+"_gaussian reconstructed",significanceSig=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]],sig=sigLegend)
+
+    #outputFile
+    outFileDir="./outputforPython2ToRoot/"
+    #outXTitle=outFileDir+"outputX_"+config['title']+".txt"
+    #outYTitle=outFileDir+"outputY_"+config['title']+".txt"
+    #outYErrTitle=outFileDir+"ouputYerr_"+config['title']+".txt"
+    outputTitle=outFileDir+"output_"+config['title']+".txt"
+
+    #arrays for x and y
+    #x=array('f', bkgndData.xData)
+    #y=array('f', signalData1.sig['bkgOnlyGPPred'])
+#list for x and y
+    x= bkgndData.xData
+    y=signalData1.sig['bkgOnlyGPPred']
+    #TODO error for y require pseudo experiments
+#---- json output dump
+    with open(outputTitle, 'w') as outFile:
+        json.dump({"config":config['configFile'],"x":x.tolist(), "y":y.tolist()}, outFile)
+
+#----saving to txt bs
+    #outFilex=open(outXTitle, "w")
+    #for i in x :
+    #    outFilex.write(str(i)+"   ")
+
+    #outFilex.close()
+
+    #outFiley=open(outYTitle, "w")
+    #for i in y :
+    #    outFiley.write(str(i)+"   ")
+    #outFiley.close()
+
+    #outConfig=open(outputConfig, "w")
+
+
+
 #-----------------draw data points only
     #---------- draw signal +bkgnd MC
     #drawFitDataSet(signalInjectedBkgndData, config["title"]+"_TestSignalinjectedBkg")
@@ -66,7 +117,6 @@ def signalReconstruction(config):
     #drawFit(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_withSignal")
     #drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=model_gp((p0,p1,p2), bkgndData.xData,bkgndData.xerrData), sig=None, title=config["title"]+"_model_gp_bkg")
     #drawFit(xData=bkgndData.xData,yerr=bkgndData.yerrData, yData=bkgndData.yData, yFit=signalData1.sig['sigPlusBkgPrediction'], sig=None, title=config["title"]+"_signal+BkgPred")
-
 if __name__=="__main__":
     config={"title":"testY",
             "trial":30,

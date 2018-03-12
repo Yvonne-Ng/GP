@@ -233,19 +233,26 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
             can.ax.set_yscale('log')
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGaussianFit, '-r', label="Signal point Gaussian Fit(injected signal)")
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.yGPSubtractionFit, '-g', label="Signal GP Fit subtraction")
-        can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Gaussian Fit")
+        #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['Gaussian'],'-m', label="Signal GP Kernel reconstructed Gaussian Fit")
         print(asignalDataSet.sig['custom'])
         can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['custom'],'-b', label="Signal GP Kernel reconstructed signal template Fit")
         #can.ax.plot(signalBkgDataSet.xData, asignalDataSet.sig['customTest'],'-k', label="Signal GP Kernel reconstructed signal template Fit default")
+        #accidentally broke gaussian signal
+#print both signal
+#        if sig:
+#            for i in range(len(sig)):
+#                print("i", i)
+#                can.ratio[i].stem(signalBkgDataSet.xData, significanceSig[i], markerfmt='.', basefmt=' ')
+#                can.ratio[i].set_ylabel(sig[i])
+#                print("legend: ", sig[i])
+#                can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
+#                can.ax.legend(framealpha=0)
 
-        if sig:
-            for i in range(len(sig)):
-                print("i", i)
-                can.ratio[i].stem(signalBkgDataSet.xData, significanceSig[i], markerfmt='.', basefmt=' ')
-                can.ratio[i].set_ylabel(sig[i])
-                print("legend: ", sig[i])
-                can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
-                can.ax.legend(framealpha=0)
+        can.ratio[1].stem(signalBkgDataSet.xData, significanceSig[1], markerfmt='.', basefmt=' ')
+        can.ratio[1].set_ylabel(sig[1])
+        print("legend: ", sig[1])
+        can.ratio[1].axhline(0, linewidth=1, alpha=0.5)
+        can.ax.legend(framealpha=0)
             #can.ratio.stem(signalBkgDataSet.xData, asignalDataSet.gaussianFitSignificance, markerfmt='.', basefmt=' ')
             #can.ratio.axhline(0, linewidth=1, alpha=0.5)
             #can.ax.plot(xSB, ymuGP_KernBkg_SB, '-g', label="GP bkgnd kernel") #drawing

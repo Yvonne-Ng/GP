@@ -274,8 +274,8 @@ def fit_gp_minuit(num, lnprob):
                    #limit_power = (0.0001, 100),
                    limit_power = (800, 1000),
                    limit_sub = (0.001, 1e6),
-                   limit_p0 = (-100,1000000),
-                   limit_p1 = (-100,100),
+                   limit_p0 = (0,100009900),
+                   limit_p1 = (0,100),
                    limit_p2 = (-100,100))
         m.migrad()
         print("trial #", i)
@@ -343,23 +343,24 @@ class logLike_minuit_sigWithWindow:
 ###
 def fit_gpSig_minuit(num, lnprob, mass, initParams):
 
+    print("initPArams:", initParams)
     min_likelihood = np.inf
     best_fit_params= "doesn't converge"
-    guesses = {
-        'amp': 6946279097.0,
-        #'p0': 0.23,
-        #'p1': 0.46,
-        #'p2': 0.89
-        #gotta change this to the fit function value!
-        'p0': 6.00,
-        'p1': 19.43,
-        'p2': -2.307
-    }
-    def bound(par, neg=False):
-        if neg:
-            return (-2.0*guesses[par], 2.0*guesses[par])
-        return (guesses[par] * 0.5, guesses[par] * 2.0)
-
+  #  guesses = {
+  #      'amp': 6946279097.0,
+  #      #'p0': 0.23,
+  #      #'p1': 0.46,
+  #      #'p2': 0.89
+  #      #gotta change this to the fit function value!
+  #      'p0': 6.00,
+  #      'p1': 19.43,
+  #      'p2': -2.307
+  #  }
+  #  def bound(par, neg=False):
+  #      if neg:
+  #          return (-2.0*guesses[par], 2.0*guesses[par])
+  #      return (guesses[par] * 0.5, guesses[par] * 2.0)
+    initPArams: [11247987465.699894, 212.25600368592418, 68700677.27700837, 822.4296451063649, 8860.5707290683, 947610.1895893898, 38.35460867371643, 3.363278743203807]
     for i in range(num):
         iamp = initParams[0]#i*1.2*np.random.random()# * 2*guesses['amp']
         idecay = initParams[1]#*1.2*np.random.random()# * 0.64
@@ -455,8 +456,8 @@ def fit_gp_fitgpsig_minuit(num, lnprob, mass, initParams,Print=True):
         imass=np.random.random() *mass*(1+massReconstructionWindow)
         itau= np.random.random() *100000000
 
-        m = Minuit(lnprob, throw_nan=True, pedantic=True, print_level=0, errordef=0.5, Amp=iAmp, decay=iDecay, length=ilength, power=ipower, sub=isub, p0=ip0, p1=ip1, p2=ip2, A=iA, mass=imass, tau=itau, error_Amp=1e1, error_decay=1e1, error_length=1e1, error_power=1e1, error_sub=1e1, error_p0=1e-2, error_p1=1e-2, error_p2=1e-2, error_A=1., error_mass=1., error_tau=1., limit_Amp=(-100000,100000000000), limit_decay=(0.01, 1000), limit_length=(1, 1e8), limit_power=(0.001, 1000), limit_sub=(0.001,
-            1e6), limit_p0=(-100,1000000.), limit_p1=(-100., 100.), limit_p2=(-100., 100), limit_A=(-0.1,0.1), limit_mass=(mass*(1-massReconstructionWindow), mass*(1-massReconstructionWindow)), limit_tau=(-500, 500))
+        m = Minuit(lnprob, throw_nan=True, pedantic=True, print_level=0, errordef=0.5, Amp=iAmp, decay=iDecay, length=ilength, power=ipower, sub=isub, p0=ip0, p1=ip1, p2=ip2, A=iA, mass=imass, tau=itau, error_Amp=1e1, error_decay=1e1, error_length=1e1, error_power=1e1, error_sub=1e1, error_p0=1e-2, error_p1=1e-2, error_p2=1e-2, error_A=1., error_mass=1., error_tau=1., limit_Amp=(1,1e14), limit_decay=(0.01, 1000), limit_length=(1, 1e8), limit_power=(0.001, 1000), limit_sub=(0.001,
+            1e6), limit_p0=(-100,1000000.), limit_p1=(-100., 100.), limit_p2=(-100., 100), limit_A=(-0.1,0.1), limit_mass=(mass*(1-massReconstructionWindow), mass*(1+massReconstructionWindow)), limit_tau=(-500, 500))
 
         m.migrad()
         print("trial #", i)
@@ -599,7 +600,6 @@ class logLike_gp_sigRecon_diffLog:
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyperparams.values() #best_fit_gp
         bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
         logL=0
-
         for ibin in range(len(self.y)):
             data = self.y[ibin]
             bkg = bkgFunc[ibin]
@@ -617,14 +617,16 @@ def fit_gp_sigRecon(lnprob,mass, trial=50, Print = True):
     bestargs = (0, 0, 0)
     passedFit = False
     numRetries = 0
+    print("mass: ", mass)
+    print("mass range: ", (mass*(1-massReconstructionWindow), mass*(1+massReconstructionWindow)))
     for i in range(trial):
-        init0 = np.random.random() * 1e11
-        init1 = np.random.random() * mass*(1+massReconstructionWindow)
+        init0 = np.random.random() * 1e15
+        init1 = np.random.random() * mass*(1+2*massReconstructionWindow)
         init2 = np.random.random() * 120
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   A = init0, mass = init1, tau = init2,
                   error_A = 1., error_mass = 1., error_tau = 1.,
-                  limit_A = (1e4, 1e11), limit_mass = (mass*(massReconstructionWindow-1), mass*(massReconstructionWindow+1)), limit_tau = (30, 120))
+                  limit_A = (1e4, 1e15), limit_mass = (mass*(1-massReconstructionWindow), mass*(1+massReconstructionWindow)), limit_tau = (30, 120))
         fit = m.migrad()
         if m.fval < bestval:
             bestval = m.fval
@@ -801,14 +803,16 @@ def fit_gp_sig_fixedH_minuit(lnprob, mass, trial, Print = True):
     passedFit = False
     numRetries = 0
     for i in range(trial):
-        init0 = np.random.random() * 500000000.
+        init0 = np.random.random() * 1e15
         init1 = np.random.random() * mass*(1+massReconstructionWindow)
-        init2 = np.random.random() * 200.
+        init2 = np.random.random() * 1000.
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   Num = init0, mu = init1, sigma = init2,
                   error_Num = 1., error_mu = 1., error_sigma = 1.,
-                  limit_Num = (1, 500000000000), limit_mu = (mass*(1-massReconstructionWindow), mass*(1+massReconstructionWindow)), limit_sigma = (20, 700))
+                  limit_Num = (1, 1e15), limit_mu = (mass*(1-massReconstructionWindow), mass*(1+massReconstructionWindow)), limit_sigma = (20, 1000))
         fit = m.migrad()
+        print("gaussian signal val: ", m.fval)
+        print("gaussian values: ", m.args)
         if m.fval < bestval:
             bestval = m.fval
             bestargs = m.args
@@ -893,11 +897,11 @@ def fit_gp_customSig_fixedH_minuit(lnprob, trial, Print = True):
     passedFit = False
     numRetries = 0
     for i in range(trial):
-        init0 = np.random.random() * 5000000000.
+        init0 = np.random.random() * 5000000000000.
         m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0, errordef = 0.5,
                   Num = init0,
                   error_Num = 1.,
-                  limit_Num = (400, 5000000000))
+                  limit_Num = (0, 5000000000000))
         m.migrad()
         if m.fval < bestval and m.fval!=0.0:
             bestval = m.fval
@@ -925,10 +929,15 @@ def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None
         #print(best_fit)
         if bkgDataParams:
             # only use the fit function results but not the kernel parameter results from fit_gp_minuit
-            fit_pars=[bkgDataParams[x] for x in FIT3_PARS]
-            kargs = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
-            best_fit = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
-            # changing the bkgnd kernel hyper param value of the best fit
+            #fit_pars=[bkgDataParams[x] for x in FIT3_PARS]
+            #kargs = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
+            #best_fit = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
+            pass
+        #---place holder for pass
+            fit_pars = [best_fit[x] for x in FIT3_PARS]
+            kargs = {x:y for x, y in best_fit.items() if x not in FIT3_PARS}
+
+             #changing the bkgnd kernel hyper param value of the best fit
         else:
             fit_pars = [best_fit[x] for x in FIT3_PARS]
             kargs = {x:y for x, y in best_fit.items() if x not in FIT3_PARS}
@@ -941,15 +950,15 @@ def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None
         #lnProb = logLike_gp_fitgpsig(x, y, xerr)
         #lnProb = logLike_minuit(x, y, xerr)
         if bkgDataParams:
-            fit_pars=[bkgDataParams[x] for x in FIT3_PARS]
-            kargs = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
-            best_fit = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
+            #fit_pars=[bkgDataParams[x] for x in FIT3_PARS]
+            #kargs = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
+            #best_fit = {x:y for x, y in bkgDataParams.items() if x not in FIT3_PARS}
 
 #-----specific setup for example mR500
             #min_likelihood, best_fit = fit_gpSig_minuit(likelihoodTrial, lnProb, (9424207558.974304, 23.36140499375173, 212320.71588945185, 0.934086263121374, 677.3782035685553,5.835978239102488, 19.11598702209463, -2.3008859313936085))
             min_likelihood, best_fit = fit_gpSig_minuit(likelihoodTrial, lnProb, mass, list(bkgDataParams.values()))
             print ("min likelihood:", min_likelihood)
-            print(best_fit)
+            #print(best_fit)
             fit_pars = [best_fit[x] for x in FIT3_PARS]
             kargs = {x:y for x, y in best_fit.items() if x not in FIT3_PARS}
         #signal kernel

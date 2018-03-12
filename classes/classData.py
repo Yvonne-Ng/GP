@@ -150,7 +150,8 @@ class dataSet: # each class treats a type of data set
     def gPBkgKernelFit(self, trial=100, useBkgDataResult="", useSimpleFitResult=False,bkgDataHyperParams=None, doPrint=False):
         """Execute GPBkgKernel Fit"""
         gPBkgKernelFitDone=True
-        self.y_GPBkgKernelFit, self.cov_GPBkgKernelFit, self.bestFit_GPBkgKernelFit=y_bestFitGP(self.xData,self.xData,self.yData,self.xerrData, self.yerrData,trial, kernelType="bkg", bkgDataParams=None) #bkgDataHyperParam will be None unless set when the function is called
+
+        self.y_GPBkgKernelFit, self.cov_GPBkgKernelFit, self.bestFit_GPBkgKernelFit=y_bestFitGP(self.xData,self.xData,self.yData,self.xerrData, self.yerrData,trial, kernelType="bkg", bkgDataParams=bkgDataHyperParams) #bkgDataHyperParam will be None unless set when the function is called
         self.significance_GPBkgKernelFit, self.chi2['GPBkg']=resSigYvonne(self.yData, self.y_GPBkgKernelFit)
         if doPrint:
             print("-------------testing GP bkgnd kernel Fit------------")
@@ -201,11 +202,6 @@ class dataSet: # each class treats a type of data set
         self.gPSigPlusBkgKernelFit(trial=trialAll, doPrint=True)
         self.yGPSignalReconstructed_dataSBMinusB(doPrint=True)
         self.officialFit(doPrint=True)
-
-
-
-
-
 
 def fit(config):  #where is this used?
     bkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['bkgndDataFile'],dataFileDir=config['bkgFileDir'], dataFileHist=config['bkgDataFileHist'],officialFitFile=config['bkgOffFitFile'])

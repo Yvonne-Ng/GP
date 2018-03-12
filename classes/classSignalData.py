@@ -118,19 +118,21 @@ class signalDataSet():
         return sigPlusBkgGPGuess, sigGPGuess, bkgGPGuess
 
     def reconstructSignalGaussianTemplate(self, fixedBkgKernelHyperParams):
-         lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
-         bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.mass, self.trial, False)
+        lnProb = logLike_gp_sig_fixedH(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,self.fixedBkgKernelHyperParams)
+        bestval, best_fit = fit_gp_sig_fixedH_minuit(lnProb, self.mass, self.trial, False)
          #print("got here")
          #if np.isinf(bestval): continue
-         N, M, W = best_fit
-         print("gaussian mass reconstructed: ", M)
-         ySig=sig_model(self.sigBkgDataSet.xData, N, M, W, self.sigBkgDataSet.xerrData)
-         return ySig
+        N, M, W = best_fit
+        print("gaussian mass reconstructed: ", M)
+#         ySig=sig_model(self.sigBkgDataSet.xData, N, M, W, self.sigBkgDataSet.xerrData)
+        ySig=gaussian(self.sigBkgDataSet.xData, N, M, W)
+        return ySig
 
     def reconstructSignalCustomSignalTemplate(self,fixedBkgKernelHyperParams):
 
         if self.configDict==None:
-            xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.h5", "", "reweighted_Ph100_ZPrimemR500_gSM0p3")
+            #xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints("/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/signal/reweighted_Signal_dijetgamma_g85_2j65_36p1fb.h5", "", "reweighted_Ph100_ZPrimemR500_gSM0p3")
+            #xTemplate, yTemplate, xerrTemp, yerrTemp = getDataPoints(self.configDict['sigTemplateFile'], "", self.configDict['sigTemplateHist'])
             print("custom signal hist used: DEFAULT")
         else:
             print("configDict", self.configDict)
@@ -142,10 +144,10 @@ class signalDataSet():
 
         yNorm=yTemplate/norm
         #self.yTemplate=yNorm
-        self.yTemplate=yTemplate*10
+        #self.yTemplate=yTemplate*10
         print("yNom: ", yNorm)
         lnProb=logLike_gp_customSigTemplate_diffLog(self.sigBkgDataSet.xData,self.sigBkgDataSet.yData, self.sigBkgDataSet.xerrData,xTemplate, yNorm,self.fixedBkgKernelHyperParams, self.sigBkgDataSet.weight, bkg=self.sig['bkgOnlyGPPred'])
-        print("testnormnew: ", lnProb(46180))
+        #print("testnormnew: ", lnProb(46180))
         bestval, best_fit=fit_gp_customSig_fixedH_minuit(lnProb, self.trial)
         N=best_fit
         ySig=customSignalModel(N, yNorm)
