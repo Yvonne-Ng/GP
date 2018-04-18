@@ -79,8 +79,10 @@ def dataCut(xMin, xMax, yMin, x, y, xerr, yerr):
 def getDataPoints(fileName, tDirName, histName):
     with File(fileName,'r') as h5file:
         if tDirName=="":
+            #print("check tDirName=none")
             x, y, xerr, yerr = get_xy_pts(h5file[histName])
         else:
+            #print("check tDirName=none")
             x, y, xerr, yerr = get_xy_pts(h5file[tDirName][histName])
         return x, y, xerr, yerr
 
@@ -327,6 +329,51 @@ class logLike_minuit_sigWithWindow:
         except:
             return np.inf
 
+#----fit with signal template
+class logLike_gp_tempSig_fixedH:
+    def __init__(self, x, y, xerr, sigTemp, fixedBkgParams):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+        self.sigTemp = sigTemp
+        self.fixedBkgParams=fixedBkgParams
+    def __call__(self, N):
+        print(self.fixedBkgParams)
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedBkgParams.values()
+
+        kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
+        gp = george.GP(kernel)
+        try:
+            gp.compute(self.x, np.sqrt(self.y))
+            return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr)-self.sigTemp(N, self.x))
+        except:
+            return np.inf
+#----fit with signal template
+def fit_gp_tempSig_fixedH_minuit(lnprob, Print = True):
+    minLLH = np.inf
+    best_fit_params = (0)
+    passedFit = False
+    numRetries = 0
+    while not passedFit and numRetries < 20:
+        init0 = np.random.random() * 1.
+        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
+                   N = init0, error_N = 1e-4, limit_N = (0, 10000))
+        fit = m.migrad()
+        if fit[0]['is_valid']:
+            passedFit=True
+        if m.fval < minLLH:
+            minLLH = m.fval
+            best_fit_params = m.args
+
+        if numRetries == 19:
+            print ("retry number = ", 5, ": failed fits")
+            minLLH=np.inf
+            best_fit_params=(0)
+        numRetries+=1
+    if Print:
+        print ("min LL", minLLH)
+        print ("best fit vals",best_fit_params)
+    return minLLH, best_fit_params
 #####################3#
 #    def __call__(self, Amp, decay, length, power, sub, p0, p1, p2, A=0, mass=0, tau=0):
 #        #Amp, decay, length, power, sub, p0, p1, p2 = fixedHyperparams
@@ -825,13 +872,15 @@ def fit_gp_sig_fixedH_minuit(lnprob, mass, trial, Print = True):
 
 #def sig_model(x, N=1e5, mass=2000., width=100., xErr=0.1):
 #    return N*(np.exp(-(x-mass)**2/2/width/width)/np.sqrt(2*np.pi)/width)*xErr
+
 def customSignalModel(N, yTemp):
     #probably don't need x?
     #N=40000
     return N* yTemp
 
 class logLike_gp_customSigTemplate:
-    def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper):
+    """using the loglilihood of the GP background kernel"""
+    def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper, weight, bkg):
         self.x = x
         self.y = y
         self.xerr = xerr
@@ -839,20 +888,73 @@ class logLike_gp_customSigTemplate:
         self.xTemplate=xTemplate
         self.yTempNorm= yTempNorm
         self.fixedHyper=fixedHyper
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+        if bkg is not None:
+            self.bkgFunc=bkg
+        else:
+            self.bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
 
     def __call__(self, Num):
         Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values()
+        #adding the background kernel fit here
         kernel = Amp * MyDijetKernelSimp(a = decay, b = length, c = power, d = sub)
         gp = george.GP(kernel)
         try:
             gp.compute(self.x, np.sqrt(self.y))
             signal = customSignalModel(Num, self.yTempNorm)
             #perhaps the lnlikelihood becasme -ve here and is undefined
+            #actually so then how is this different from the normal fitting method?
+            #gp.lnlikelihood minimizes the quantity you supply it with
             return -gp.lnlikelihood(self.y - model_gp((p0,p1,p2), self.x, self.xerr)-signal)
         except:
             return np.inf
 
 class logLike_gp_customSigTemplate_diffLog:
+    """using the loglikelihood of the global fit method instead to verify the result"""
+    def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper,weight=None, bkg=None):
+        self.x = x
+        self.y = y
+        self.xerr = xerr
+        self.xTemplate=xTemplate
+        self.yTempNorm= yTempNorm
+        self.fixedHyper=fixedHyper
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+        if bkg is not None:
+            self.bkgFunc=bkg
+        else:
+            self.bkgFunc=model_gp((p0,p1,p2), self.x, self.xerr)
+
+    def __call__(self, Num):
+        Amp, decay, length, power, sub, p0, p1, p2 = self.fixedHyper.values() #best_fit_gp
+        signal = customSignalModel(Num, self.yTempNorm)
+
+        print("Num: ", Num)
+        print("signal:", signal)
+        logL=0
+        tetsum=0
+        for ibin in range(len(self.y)):
+            data = self.y[ibin]
+            bkg = self.bkgFunc[ibin]
+            sig = signal[ibin]
+            binWeight = self.weight[ibin]
+            testSum=data/binWeight- (bkg+sig)/binWeight
+            logL += -simpleLogPoisson(data/binWeight, (bkg+sig)/binWeight)
+        print("logL: ", logL)
+        print("testSum: ", testSum)
+        try:
+            logL
+            return logL
+        except:
+            return np.inf
+
+
+class logLike_gp_BkgCustomSig:
     def __init__(self, x, y, xerr, xTemplate, yTempNorm, fixedHyper,weight=None, bkg=None):
         self.x = x
         self.y = y
@@ -923,6 +1025,7 @@ def y_bestFit3Params(x, y, xerr, likelihoodTrial):
     return fit_mean
 
 def y_bestFitGP(x,xPred,y,xerr,yerr, likelihoodTrial, kernelType="bkg",mass=None, bkgDataParams=None):
+    """GP bkgnd kernel and signal kernel estimate"""
     if kernelType=="bkg":
         lnProb = logLike_minuit(x, y, xerr)
         min_likelihood, best_fit = fit_gp_minuit(likelihoodTrial, lnProb)

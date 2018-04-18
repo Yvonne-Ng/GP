@@ -1,7 +1,10 @@
+import matplotlib
+matplotlib.use('pdf')
 from pygp.canvas import Canvas
 import csv
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # drawing the subtraction GP fit
@@ -185,15 +188,18 @@ def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, 
                 can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
         can.save("results/"+title)
 
-def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, sig=None, title=None, saveTxt=False, saveTxtDir=None):
+def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, legend=[],sig=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
     with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
         can.ax.errorbar(xData, yData,yerr, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
-        can.ax.plot(xData, yFit, '-g', label="bkgndKernelFit") #drawing
-        can.ax.plot(xData, yFit2, '-r', label="GP background+signal kernel fit ") #drawing
-        can.ax.plot(xData, yFit2, '-b', label="GP backgroundKernel Fit +signal kernel reconstructed") #drawing
+        if legend ==[]:
+            legend=["bkgKernelFit","GP bakcground +signal kernel fit", "GP backgtound+signal fit -custom signal template reconsturct"]
+
+        can.ax.plot(xData, yFit, '-g', label=legend[0]) #drawing
+        can.ax.plot(xData, yFit2, '-r', label=legend[1]) #drawing
+        can.ax.plot(xData, yFit3, '-b', label=legend[2]) #drawing
         #ratio plot:
         #print("x: ", xData)
         #print("sig: ", sig)
@@ -203,6 +209,7 @@ def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None
             can.ratio[0].set_ylabel("significance")
             can.ratio[0].axhline(0, linewidth=1, alpha=0.5)
         can.save(title)
+
 def makePrettyPlots_chi2(GPchi2, BKGchi2, title, drawchi2=False, xname=r'$\chi^{2}$/d.o.f.', label1 = "Gaussian Process", label2 = "Fit Function"):
     f, (ax1) = plt.subplots(1, figsize=(12,12), gridspec_kw = {'height_ratios':[1, 1]})
     f.suptitle(title, fontsize=40)
@@ -220,6 +227,60 @@ def makePrettyPlots_chi2(GPchi2, BKGchi2, title, drawchi2=False, xname=r'$\chi^{
 
     plt.legend(prop={'size':20})
     ax1.save("chi2.pdf")
+
+def drawChi2Dist(title="",chi2DistDict=[], legend=[]):
+    #differnt injection
+    ext= ".pdf"
+    nList=[]
+    binsList=[]
+    pathcesList=[]
+    color=['g', 'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+    i=0
+    with Canvas("Testchi2.pdf") as can:
+        for tag in legend:
+            pseudoTag=tag+"Pseudo"
+            print("chi2DistDict[tag]: ", chi2DistDict[pseudoTag])
+            print("color: ", color[i])
+            #n, bins, patches, = plt.hist(chi2DistDict[pseudoTag], 50, normed=1, facecolor=color[i], alpha=0.75, label=legend[i])
+            can.ax.hist(chi2DistDict[pseudoTag], bins=20, facecolor=color[i], alpha=0.75, label=legend[i])
+            #bins = np.histogram(chi2DistDict[pseudotag], edges)
+
+            #nList.append(n)
+            #binsList.append(bins)
+            #patchesList.append(patches)
+            i=i+1
+
+        can.save("testchi2.pdf")
+
+    #Plt.xlabel('chi2/ndf')
+    #Plt.ylable('count')
+    #Plt.legend(prop={'size':20})
+    #plt.savefig("testchi2.pdf")
+
+
+    #with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
+        #f, (ax1) = plt.subplots(1, figsize=(12,12), gridspec_kw = {'height_ratios':[1, 1]})
+        #f, (ax1) = plt.subplot(211)
+        #f.subtitle(title, fontsize=40)
+
+        #lowx = min(min(GPchi2), min(BKGchi2))
+        #highx = max(max(GPchi2), max(BKGchi2))
+        #bins = np.linspace(lowx, highx, 100)
+
+    #dist=[]
+
+    #for i in range(len(chi2DistDict)):
+    #    pseudoTag=legend[i]+"Pseudo"
+    #    can.ax.plot(, y1)
+
+    #    dist[i], _, _ =ax1.hist(chi2DistDict[psuedoTag], bins=bins, alpha=0.7, color=color[i], label=legend[i])
+    #    w
+    #    ax1.tick_params(axis='y', labelsize=30)
+    #    ax1.tick_params(axis='x', labelsize=30)
+    #    ax1.set_xlabel(xname, fontsize=40)
+    #    plt.xlim(0.4, 4)
+
+    #ax1.save("Test_chi2.pdf")
 
 
 def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTxt=False, title="",significanceSig=None, sig=None):

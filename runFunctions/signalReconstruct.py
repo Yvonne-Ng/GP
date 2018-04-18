@@ -23,30 +23,27 @@ import os.path
 
 #just take in a txt file name instead
 
-def signalReconstruction(config):
-#----Make a bkgnd Data Set
-    bkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['bkgDataFile'],dataFileDir=config['bkgDataFileTDir'], dataFileHist=config['bkgDataFileHist'],officialFitFile=config['officialFitFile'])
+def signalReconstruction(config, fixedDataFile=False):
+    """fixedDataFile =True if you want to perform all signal rreconstruction as is specified in loop.py on the same data file,
+       set it to false if you want to inject signal of each mass point in loop.py and then reconstruct that """
 
+    #---- Make a bkgnd Data Set
+    bkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['bkgDataFile'],dataFileDir=config['bkgDataFileTDir'], dataFileHist=config['bkgDataFileHist'],officialFitFile=config['officialFitFile'])
     bkgndData.fitAll(trialAll=config['trial'])
 
-
-#----Make a Signal Injected bkgnd Data Set
-    signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['sigBkgDir']+config['sigBkgDataFile'], officialFitFile=config['officialFitFile'])
-    signalInjectedBkgndData.fitAll(trialAll=config['trial'],mass=config['mass'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
-    print("signal+bkgnd Data file: ", config['sigBkgDataFile'])
+    if not fixedDataFile:
+    #----fixedDataFile: Make a Signal Injected bkgnd Data Set
+        signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config["sigBkgDir"]+config['sigBkgDataFile'], officialFitFile=config['officialFitFile'])
+        signalInjectedBkgndData.fitAll(trialAll=config['trial'],mass=config['mass'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+    else:
+    #----Non-FixedDataFile:Make a Signal Injected bkgnd Data Set
+        print(config['fixedDataDir'])
+        signalInjectedBkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['fixedDataDir']+config['fixedDataFile'],dataFileDir=config["fixedDataTDir"], dataFileHist=config["fixedDataFileHist"],  officialFitFile=config['officialFitFile'])
+        signalInjectedBkgndData.fitAll(trialAll=config['trial'],mass=config['mass'], bkgDataParams=bkgndData.getGPBkgKernelFitParams())
+        print("signal+bkgnd Data file: ", config['sigBkgDataFile'])
 
 #-----Make a signal Data Set
-
     signalData1=signalDataSet(signalInjectedBkgndData, bkgndData,mass=config['mass'], trialAll=config['trial'], configDict=config)
-    #trialNum=1
-    #reRun=True
-    #while reRun==True:
-    #    try:
-    #        signalData1=signalDataSet(signalInjectedBkgndData, bkgndData,trialAll=config['trial'])
-    #    except RuntimeError as signalFitFAiled:
-    #        pass
-    #    else:
-    #        reRun=False
 
 #TODO add in a signal reconstruction trial #
 
@@ -62,6 +59,7 @@ def signalReconstruction(config):
     drawFit2(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'], sig=[significance["sigBkg_GPBkgFit"],significance["sigBkg_GPSigBkgFit"]],signiLegend=["GP Bkg Significance", "GP bkg+Signal Signifiance"], title=config["title"]+"_figure10")
     #----------draw 3 lines, including the bkgnd reconstructed + the signal reconstructed
     #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['bkgOnlyGPPred']+signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
+    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['sigPlusBkgPrediction']-signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
     #---------defining significance TODO: move this to the signalDataClass
     significance["sigReconstructedGaussian"], chi2['sigReconstructedGaussian']=resSigYvonne(signalData1.ySigData, signalData1.sig['Gaussian'],signalInjectedBkgndData.weight)
     significance["sigReconstructedCustom"], chi2["sigReconstructedCustom"]=resSigYvonne(signalData1.ySigData, signalData1.sig['custom'],signalInjectedBkgndData.weight)
@@ -75,6 +73,10 @@ def signalReconstruction(config):
 #    drawAllSignalFit(signalInjectedBkgndData, signalData1)
     #---------- draw all signal updated, working version for dijetISR specific needs
     drawAllSignalFitYvonne(signalInjectedBkgndData, signalData1,title=config["title"]+"_gaussian reconstructed",significanceSig=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]],sig=sigLegend)
+#---2018-4-10 plotting the figure 10 bkg and the signal bkg
+
+    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.bkgPred['figure10'],yFit3=signalData1.sigBkgPred['figure10'], legend=["GPBkg+SigKernel Bkg.Pred.", "figure 10 corected bkg", "figure1- corrected bkg+sig"],sig=None, title=config["title"]+"_figure10-3Line_updated")
+
 
     #outputFile
     outFileDir="./outputforPython2ToRoot/"
@@ -87,12 +89,14 @@ def signalReconstruction(config):
     #x=array('f', bkgndData.xData)
     #y=array('f', signalData1.sig['bkgOnlyGPPred'])
 #list for x and y
-    x= bkgndData.xData
+    x=signalInjectedBkgndData.xData
     y=signalData1.sig['bkgOnlyGPPred']
     #TODO error for y require pseudo experiments
 #---- json output dump
     with open(outputTitle, 'w') as outFile:
-        json.dump({"config":config['configFile'],"x":x.tolist(), "y":y.tolist()}, outFile)
+        xround=[float(int(xEle)) for xEle in x]
+        print("xround: ", xround)
+        json.dump({"config":config['configFile'],"x":xround, "y":y.tolist()}, outFile)
 
 #----saving to txt bs
     #outFilex=open(outXTitle, "w")

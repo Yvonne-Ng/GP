@@ -29,25 +29,75 @@ def signalHistNameCreate(template, ptCut, resMass, coupling):
     print(newTemplate)
     return newTemplate
 
+def loopSignalReconstruction(argsConfig, argsLoopConfig, fixedDataFile=False):
+    """
+    loop over signal Reconstrucion
+    --- Options:
+    fixedDataFile:False:
+         multuple injected signal bkgnd data file,the signal injected are defined in the loopConfig reconstruct the signals that are injected
+    fixedDAtaFile=True:
+         one data file, multiple to reconstruct it the signal reconstructed is defined in the loopConfig file
+    """
+    initConfigFile=importlib.import_module(argsConfig)
+    loopConfigFile=importlib.import_module(argsLoopConfig)
+    #-----Printing the dictionary as a check
+    print(initConfigFile.config)
+    print(loopConfigFile.config)
+    #????is this conrrect?
+    initConfigFile.config["configFile"]=argsLoopConfig
+    initConfigFile.config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
+    template=initConfigFile.config['sigBkgDataFile']
+    #-----Holder for the template of the title for each input
+    titleTemplate=initConfigFile.config['title']
+    sigTemplateHist=initConfigFile.config['sigTemplateHist']
+    for ptCut in loopConfigFile.config['ptCuts']:
+        for mult in loopConfigFile.config['mults']:
+            for resMass in loopConfigFile.config['resMasses']:
+                for coupling in loopConfigFile.config['couplings']:
+                    #------create the new input .h5 file name
+                    newTemplate=inputFileNameCreate(template, ptCut, mult, resMass, coupling)
+                    signalHist=signalHistNameCreate(sigTemplateHist, ptCut, resMass, coupling)
+                    initConfigFile.config['mass']=resMass
+                    #------Check if the file exist in the specified directory
+                    if os.path.isfile(initConfigFile.config['sigBkgDir']+newTemplate):
+                        #-------print info about the file
+                        print("fileName ", newTemplate)
+                        print("fileExist!")
+                        #------Set title of the output file
+                        initConfigFile.config['title']=titleTemplate+"_Ph"+str(ptCut)+"_mR"+str(resMass)+"_gSM"+str(coupling)+"_Mul"+str(mult)
+                        initConfigFile.config['sigTemplateHist']=signalHist
+                        #-----Set the input file name
+                        initConfigFile.config['sigBkgDataFile']=newTemplate
+                        #----Run signal reconstruction
+                        signalReconstruction(initConfigFile.config,fixedDataFile)
+                    else:
+                        print("fileName ", newTemplate)
+                        print("file does not exist!")
+                        if fixedDataFile:
+                            signalReconstruction(initConfigFile.config,fixedDataFile)
+
+
 if __name__=="__main__":
     #-----Argument Parser
     parser=argparse.ArgumentParser()
-    parser.add_argument("--config", default="signalReconstructionConfig.template")
-    parser.add_argument("--loopConfig", default="signalReconstructionConfig.loop")
+    parser.add_argument("--config", default="configSignalRecon.template")
+    parser.add_argument("--loopConfig", default="configSignalRecon.loop")
+    parser.add_argument("--fixedDataFile", type=bool, default=False)
     args=parser.parse_args()
     print(args.config)
     #-----converting string to .py
         #-------initConfig file is the initial file for single loop
-    initConfigFile=importlib.import_module(args.config)
-    loopConfigFile=importlib.import_module(args.loopConfig)
-    #-----Printing the dictionary as a check
-    print(initConfigFile.config)
-    print(loopConfigFile.config)
-    initConfigFile.config["configFile"]=args.loopConfig
+    #initConfigFile=importlib.import_module(args.config)
+    #loopConfigFile=importlib.import_module(args.loopConfig)
+    ##-----Printing the dictionary as a check
+    #print(initConfigFile.config)
+    #print(loopConfigFile.config)
+    #initConfigFile.config["configFile"]=args.loopConfig
+    loopSignalReconstruction(args.config,args.loopConfig, args.fixedDataFile)
 
 
 #-----------loop specific template option TODO: throw this into loop templates
-    initConfigFile.config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
+    """initConfigFile.config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
     template=initConfigFile.config['sigBkgDataFile']
                 #-----"MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5"
     #-----Holder for the template of the title for each input
@@ -76,4 +126,4 @@ if __name__=="__main__":
                     else:
                         print("fileName ", newTemplate)
                         print("file does not exist!")
-
+    """

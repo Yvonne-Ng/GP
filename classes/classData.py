@@ -38,10 +38,13 @@ class dataSet: # each class treats a type of data set
         3. Simple Fit function
         4. Official Fit Function
         5.SWIFT (Coming soon) """
+
     def __init__(self, xMinData=None, xMaxData=None, xMinSimpleFit=None, xMaxSimpleFit=None, dataFile='', dataFileDir='',dataFileHist=dataFileHistTemplate, officialFitFile='', officialFitDir='',officialFitHist=officialFitHistTemplate, toy=False, originalSet=None, useScaled=False):
         self.xMinData=xMinData
         self.xMaxData=xMaxData
         self.chi2={}
+        if dataFileHist=="":
+            dataFileHist=dataFileHistTemplate
         if dataFileHist==dataFileHistTemplate:
             dataFileHist=dataFile.rsplit("/")[-1][:-3]
         if toy==False:

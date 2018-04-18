@@ -45,7 +45,7 @@ if __name__=="__main__":
             "xMinGP": 300,
             "xMaxGP": 1500,
             #-----Spectrum file input
-            "dataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/btagged/jan2018/trijet_HLT_j380_nbtag1.h5",
+            "dataFile": "/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/reweighted_hist-background_ABCD_trijet.h5",
             "dataFileTDir": "",
             "dataFileHist": "background_mjj_var",
             #------put some placeholder file here
