@@ -31,7 +31,7 @@ import string
 FIT3_PARS = ['p0','p1','p2']
 
 class signalDataSet():
-    def __init__(self,signalBkgDataSet, bkgDataSet, mass, trialAll=1, useScaled=False, configDict=None):
+    def __init__(self,signalBkgDataSet, bkgDataSet, mass, trialAll=1, useScaled=False, configDict=None, signalFile=None, signalHist=None):
         #make sure the size of both data matches
         # finding the raw data points
         self.trial=trialAll
@@ -46,34 +46,35 @@ class signalDataSet():
             self.mass=mass #signal mass
             self.configDict=configDict
         #GP subtraction fit
-        self.yGPSubtractionFit =signalBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
-        self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
+        #self.yGPSubtractionFit =signalBkgDataSet.y_GPSigPlusBkgKernelFit- signalBkgDataSet.y_GPBkgKernelFit
+        #self.gpSubtractionSignificance=res_significance(self.ySigData, self.yGPSubtractionFit)
         #need to have a very good initial guess in order to have the gaussian converge
-        peakValue=self.ySigData.max()
-        mean = self.xSigData[self.ySigData.argmax()]
+        #peakValue=self.ySigData.max()
+        #mean = self.xSigData[self.ySigData.argmax()]
         #print(np.where(self.ySigData > peakValue * np.exp(-.5).size()))
         #if np.where(self.ySigData > peakValue * np.exp(-.5).size())==0:
         #    sigma=0.
         #else:
-        try:
-            sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0]
-        except IndexError:
-            sigma= 9999999999.
-
-        init_vals = [peakValue, mean, sigma]
-        try:
-            best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
-        except RuntimeError as fitFailed:
-            print("warning fit failed")
-            best_vals=-1
-            covar=-1
-            #return fitFailed
-            raise ValueError("fit failed in signal reconstruction")
-#            return -1
-
-        print("best_vals: ", *best_vals)
-        self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
-        self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
+#        try:
+#            sigma = mean - np.where(self.ySigData > peakValue * np.exp(-.5))[0][0]
+#        except IndexError:
+#            sigma= 9999999999.
+#
+#        init_vals = [peakValue, mean, sigma]
+#        try:
+#            best_vals, covar = curve_fit(gaussian, self.xSigData, self.ySigData, p0=init_vals)
+#        except RuntimeError as fitFailed:
+#            print("warning fit failed")
+#            print("ySigData: ", self.ySigData)
+#            best_vals=-1
+#            covar=-1
+#            #return fitFailed
+#            raise ValueError("fit failed in signal reconstruction")
+##            return -1
+#
+#        print("best_vals: ", *best_vals)
+#        self.yGaussianFit = gaussian(signalBkgDataSet.xData, *best_vals)
+#        self.gaussianFitSignificance=res_significance(self.ySigData, self.yGaussianFit)
 
         self.sig={}
         self.bkgPred={}

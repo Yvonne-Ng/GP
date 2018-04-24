@@ -82,7 +82,7 @@ if __name__=="__main__":
 
     #self.weight=np.square(self.yerrData)/self.yData
     weight["bkg"]=np.square(yerr["bkg"])/y["bkg"]
-    mean["bkg"], cov["bkg"], bestFit["bkg"]= y_bestFitGP(x["bkg"], x["bkg"], y["bkg"], xerr["bkg"] , yerr["bkg"], 10, kernelType="bkg")
+    mean["bkg"], cov["bkg"], bestFit["bkg"]= y_bestFitGP(x["bkg"], x["bkg"], y["bkg"], xerr["bkg"] , yerr["bkg"], 15, kernelType="bkg")
     significance["bkg"],chi2["bkg"] = resSigYvonne(y["bkg"], mean["bkg"], weight["bkg"])
     print("chi2/ndf is for bkg is : ", chi2ndfCalculation(y["bkg"], mean["bkg"], weight["bkg"]))
     tagSet.append("bkg")
@@ -99,7 +99,7 @@ if __name__=="__main__":
 
         #----fitting with bkg kernel for injected signal
         print("mass: ", 500, " mult: X", mult)
-        mean[tag], cov[tag], bestFit[tag]= y_bestFitGP(x[tag], x[tag], y[tag], xerr[tag] , yerr[tag], 10, kernelType="bkg")
+        mean[tag], cov[tag], bestFit[tag]= y_bestFitGP(x[tag], x[tag], y[tag], xerr[tag] , yerr[tag], 2, kernelType="bkg")
         #---drawing the comaprison with bkg fit
 #def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, signiLegend=None, title=None, saveTxt=False, saveTxtDir=None):
         #significance["sigBkg_GPBkgFit"],chi2["sigBkg_GPBkgFit"] = resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['bkgOnlyGPPred'], signalData1.sigBkgDataSet.weight)
@@ -122,7 +122,7 @@ if __name__=="__main__":
         chi2[pseudoTag]={}
         chi2ndf[pseudoTag]=[]
 
-        for i in range(50):
+        for i in range(25):
             #---fluctuate the the y value of the previous fit result
             #--- and perform the fit again
             y[pseudoTag][i]=[]
@@ -136,11 +136,11 @@ if __name__=="__main__":
 
             y[pseudoTag][i]=doPseudoExperiment(mean[originalTag],weight[originalTag])
             weight[pseudoTag][i]=(np.square(yerr[originalTag])/y[pseudoTag][i]).tolist()
-            print("weight[pseudoTag][i]: ", weight[pseudoTag][i])
-            print("weight type: ", type(weight[pseudoTag][i]))
-            mean[pseudoTag][i], cov[pseudoTag][i], bestFit[pseudoTag][i]= y_bestFitGP(x[tag], x[tag], y[pseudoTag][i], xerr[tag] , yerr[tag], 10, kernelType="bkg")
+            #print("weight[pseudoTag][i]: ", weight[pseudoTag][i])
+            #print("weight type: ", type(weight[pseudoTag][i]))
+            mean[pseudoTag][i], cov[pseudoTag][i], bestFit[pseudoTag][i]= y_bestFitGP(x[tag], x[tag], y[pseudoTag][i], xerr[tag] , yerr[tag], 2, kernelType="bkg")
             significance[pseudoTag][i],chi2[pseudoTag][i] = resSigYvonne(y[pseudoTag][i], mean[pseudoTag][i], weight[pseudoTag][i])
-            print("length of weight: ", len(weight[pseudoTag][i]))
+            #print("length of weight: ", len(weight[pseudoTag][i]))
             #print("length of y: ", len(y[tag][i]))
 
             if np.isnan(chi2ndfCalculation(y[pseudoTag][i], mean[pseudoTag][i], weight[pseudoTag][i])):
@@ -148,7 +148,6 @@ if __name__=="__main__":
             else:
                 chi2ndf[pseudoTag].append(chi2ndfCalculation(y[pseudoTag][i], mean[pseudoTag][i], weight[pseudoTag][i]))
 
-        print( "chi2/ndf for tag: ", tag, chi2ndf[pseudoTag])
+        #print( "chi2/ndf for tag: ", tag, chi2ndf[pseudoTag])
+        print( "mean chi2/ndf for tag: ", tag, np.mean(chi2ndf[pseudoTag]))
     drawChi2Dist("chi2/ndf: ", chi2ndf, tagSet)
-
-

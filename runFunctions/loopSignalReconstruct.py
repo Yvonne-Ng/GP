@@ -1,6 +1,6 @@
 #import signalReconstruction
 from runFunctions.signalReconstruct import signalReconstruction
-from signalReconstructionConfig import *
+#from signalReconstructionConfig import *
 import argparse
 import importlib
 from pathlib import Path
@@ -80,9 +80,9 @@ def loopSignalReconstruction(argsConfig, argsLoopConfig, fixedDataFile=False):
 if __name__=="__main__":
     #-----Argument Parser
     parser=argparse.ArgumentParser()
-    parser.add_argument("--config", default="configSignalRecon.template")
-    parser.add_argument("--loopConfig", default="configSignalRecon.loop")
-    parser.add_argument("--fixedDataFile", type=bool, default=False)
+    parser.add_argument("--config", default="configSignalRecon.template", help="set config file")
+    parser.add_argument("--loopConfig", default="configSignalRecon.loop",help="set loop configuration")
+    parser.add_argument("--fixedDataFile", type=bool, default=False, help="set this to true if running over fixedDataFile")
     args=parser.parse_args()
     print(args.config)
     #-----converting string to .py

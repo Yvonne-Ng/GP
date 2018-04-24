@@ -1,5 +1,4 @@
 import matplotlib
-matplotlib.use('pdf')
 from pygp.canvas import Canvas
 import csv
 import math
@@ -243,6 +242,7 @@ def drawChi2Dist(title="",chi2DistDict=[], legend=[]):
             print("color: ", color[i])
             #n, bins, patches, = plt.hist(chi2DistDict[pseudoTag], 50, normed=1, facecolor=color[i], alpha=0.75, label=legend[i])
             can.ax.hist(chi2DistDict[pseudoTag], bins=20, facecolor=color[i], alpha=0.75, label=legend[i])
+            can.ax.set_xlim(0,3)
             #bins = np.histogram(chi2DistDict[pseudotag], edges)
 
             #nList.append(n)
@@ -250,6 +250,7 @@ def drawChi2Dist(title="",chi2DistDict=[], legend=[]):
             #patchesList.append(patches)
             i=i+1
 
+        can.ax.legend(framealpha=0)
         can.save("testchi2.pdf")
 
     #Plt.xlabel('chi2/ndf')

@@ -56,15 +56,15 @@ def signalReconstruction(config, fixedDataFile=False):
     significance["sigBkg_GPSigBkgFit"],chi2["sigBkg_GPSigBkgFit"] = resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['sigPlusBkgPrediction'], signalData1.sigBkgDataSet.weight)
     print("significacne of bkg ", significance["sigBkg_GPBkgFit"])
     #----------draw 2 lines, including the bkgnd kernel prediction and the signal + bkgnd kernel prediction
-    drawFit2(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'], sig=[significance["sigBkg_GPBkgFit"],significance["sigBkg_GPSigBkgFit"]],signiLegend=["GP Bkg Significance", "GP bkg+Signal Signifiance"], title=config["title"]+"_figure10")
+    #drawFit2(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'], sig=[significance["sigBkg_GPBkgFit"],significance["sigBkg_GPSigBkgFit"]],signiLegend=["GP Bkg Significance", "GP bkg+Signal Signifiance"], title=config["title"]+"_figure10")
     #----------draw 3 lines, including the bkgnd reconstructed + the signal reconstructed
     #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['bkgOnlyGPPred']+signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
-    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['sigPlusBkgPrediction']-signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
+    #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.sig['sigPlusBkgPrediction'],yFit3=signalData1.sig['sigPlusBkgPrediction']-signalData1.sig['custom'], sig=None, title=config["title"]+"_figure10-3Line")
     #---------defining significance TODO: move this to the signalDataClass
-    significance["sigReconstructedGaussian"], chi2['sigReconstructedGaussian']=resSigYvonne(signalData1.ySigData, signalData1.sig['Gaussian'],signalInjectedBkgndData.weight)
-    significance["sigReconstructedCustom"], chi2["sigReconstructedCustom"]=resSigYvonne(signalData1.ySigData, signalData1.sig['custom'],signalInjectedBkgndData.weight)
-    sigLegend=["recon. gaussian", "recon. custom"]
-    significanceSignal=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]]
+    #significance["sigReconstructedGaussian"], chi2['sigReconstructedGaussian']=resSigYvonne(signalData1.ySigData, signalData1.sig['Gaussian'],signalInjectedBkgndData.weight)
+    #significance["sigReconstructedCustom"], chi2["sigReconstructedCustom"]=resSigYvonne(signalData1.ySigData, signalData1.sig['custom'],signalInjectedBkgndData.weight)
+    #sigLegend=["recon. gaussian", "recon. custom"]
+    #significanceSignal=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]]
 
 #-----------------draw signal only
     #-----------draw signal gaussian fit only
@@ -72,11 +72,11 @@ def signalReconstruction(config, fixedDataFile=False):
 
 #    drawAllSignalFit(signalInjectedBkgndData, signalData1)
     #---------- draw all signal updated, working version for dijetISR specific needs
-    drawAllSignalFitYvonne(signalInjectedBkgndData, signalData1,title=config["title"]+"_gaussian reconstructed",significanceSig=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]],sig=sigLegend)
+    #drawAllSignalFitYvonne(signalInjectedBkgndData, signalData1,title=config["title"]+"_gaussian reconstructed",significanceSig=[significance["sigReconstructedGaussian"], significance["sigReconstructedCustom"]],sig=sigLegend)
 #---2018-4-10 plotting the figure 10 bkg and the signal bkg
-
-    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.bkgPred['figure10'],yFit3=signalData1.sigBkgPred['figure10'], legend=["GPBkg+SigKernel Bkg.Pred.", "figure 10 corected bkg", "figure1- corrected bkg+sig"],sig=None, title=config["title"]+"_figure10-3Line_updated")
-
+    sig1=resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['bkgOnlyGPPred'])
+    sig2=resSigYvonne(signalInjectedBkgndData.yData, signalData1.bkgPred['figure10'])
+    #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.bkgPred['figure10'],yFit3=signalData1.sigBkgPred['figure10'], legend=["GPBkg+SigKernel Bkg.Pred.", "figure 10 corected bkg", "figure1- corrected bkg+sig"],sig=[sig1, sig2], title=config["title"]+"_figure10-3Line_updated")
 
     #outputFile
     outFileDir="./outputforPython2ToRoot/"
@@ -90,7 +90,7 @@ def signalReconstruction(config, fixedDataFile=False):
     #y=array('f', signalData1.sig['bkgOnlyGPPred'])
 #list for x and y
     x=signalInjectedBkgndData.xData
-    y=signalData1.sig['bkgOnlyGPPred']
+    y=signalData1.bkgPred['figure10']
     #TODO error for y require pseudo experiments
 #---- json output dump
     with open(outputTitle, 'w') as outFile:
