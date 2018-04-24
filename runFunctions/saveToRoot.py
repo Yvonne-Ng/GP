@@ -140,7 +140,8 @@ if __name__=="__main__":
     #TODO argParse inputFileTemplate
     template={"inputTxtDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/outputforPython2ToRoot/",
             #"inputFile":"output_testprintTXT_Ph100_mR750_gSM2_Mul10.txt",
-            "inputFile":"output_testFixedDataBkg_Ph100_mR950_gSM3_Mul5.txt",
+            #"inputFile":"output_testFixedDataBkg_Ph100_mR950_gSM3_Mul5.txt",
+            "inputFile":"output_dijetISRGammaApr2018.txt",
             #"inputFile":"output_testFixedData_Ph100_mR500_gSM3_Mul5.txt",
             "outDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/outputRootForSetLimitOneMassPoint/"}
 
