@@ -26,7 +26,6 @@ import os.path
 def signalReconstruction(config, fixedDataFile=False):
     """fixedDataFile =True if you want to perform all signal rreconstruction as is specified in loop.py on the same data file,
        set it to false if you want to inject signal of each mass point in loop.py and then reconstruct that """
-
     #---- Make a bkgnd Data Set
     bkgndData=dataSet(config['xMin'], config['xMax'], config['xMin'], config['xMax'], dataFile=config['bkgDataFile'],dataFileDir=config['bkgDataFileTDir'], dataFileHist=config['bkgDataFileHist'],officialFitFile=config['officialFitFile'])
     bkgndData.fitAll(trialAll=config['trial'])
@@ -76,14 +75,18 @@ def signalReconstruction(config, fixedDataFile=False):
 #---2018-4-10 plotting the figure 10 bkg and the signal bkg
     sig1=resSigYvonne(signalInjectedBkgndData.yData, signalData1.sig['bkgOnlyGPPred'])
     sig2=resSigYvonne(signalInjectedBkgndData.yData, signalData1.bkgPred['figure10'])
-    #drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.bkgPred['figure10'],yFit3=signalData1.sigBkgPred['figure10'], legend=["GPBkg+SigKernel Bkg.Pred.", "figure 10 corected bkg", "figure1- corrected bkg+sig"],sig=[sig1, sig2], title=config["title"]+"_figure10-3Line_updated")
+    drawFit3(xData=signalInjectedBkgndData.xData,yerr=signalInjectedBkgndData.yerrData, yData=signalInjectedBkgndData.yData, yFit=signalData1.sig['bkgOnlyGPPred'], yFit2=signalData1.bkgPred['figure10'],yFit3=signalData1.sigBkgPred['figure10'], legend=["GPBkg+SigKernel Bkg.Pred.", "figure 10 corected bkg", "figure1- corrected bkg+sig"],sigList=[sig1, sig2], title=config["title"]+"_"+str(config["mass"])+"_figure10-3Line_updated")
 
     #outputFile
     outFileDir="./outputforPython2ToRoot/"
     #outXTitle=outFileDir+"outputX_"+config['title']+".txt"
     #outYTitle=outFileDir+"outputY_"+config['title']+".txt"
     #outYErrTitle=outFileDir+"ouputYerr_"+config['title']+".txt"
-    outputTitle=outFileDir+"output_"+config['title']+".txt"
+
+    #output_newCustomFixedData_Ph100_mR950_gSM3_Mul5.txt
+    #output_dijetISRGammaApr2018.txt
+
+    outputTitle=outFileDir+"output_"+config['title']+"Ph100_mR"+str(config["mass"])+"_gSM3_Mul5.txt"
 
     #arrays for x and y
     #x=array('f', bkgndData.xData)
@@ -142,37 +145,58 @@ if __name__=="__main__":
             "outputDir":"./results",
     #-------------------------place holder
             "officialFitFile":"data/all/Step1_SearchPhase_Zprime_mjj_var.h5"}
+# quick test on trijet
+    config={"title":"trijetTest",
+            "trial":30,
+            "xMin":300,
+            "xMax":1500,
+            #-------signal +bkg data file
+            "bkgDataFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/dijetISRSearchPhasePilot/june2018/trijet_ystar0p75_inclusive.h5",
+            "bkgDataFileTDir":"",
+            "bkgDataFileHist":"background_mjj_var",
+            #-------signal +bkg data file
+            "mass": 500, #GeV
+            "sigBkgDir":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/dijetISRSearchPhasePilot/june2018/",
+            "sigBkgDataFile":"signalplusbackground.trijet_inclusiveCatDogCheckSat.Gauss_width7.mass850.SigNum7000.mjj_Gauss_sig__smooth.h5",
+            #------signal template
+            "sigTemplateFile":"/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/dijetISRSearchPhasePilot/june2018/Gauss_mass850_width7.h5",
+            "sigTemplateHist": "mjj_Gauss_sig_850_smooth",
 
+            #-------output
+            "outputDir":"./trijetTest",
+            "officialFitFile":"data/all/Step1_SearchPhase_Zprime_mjj_var.h5"}
+
+    signalReconstruction(config)
    # mult=["X1", "X2", "X5", "X10", "X20", "X30"]
    # resMass=[250, 350, 400, 450, 500, 550, 750, 950, 1500]
    # ptCut in [50, 100]
    # for coupling in [1,2,3,4]:
 
 #----------------------Loop stuff------------------------"
-    config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
-    template="MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5"
-    titleTemplate="testY"
-    sigHistTemplate= "reweighted_Ph100_ZPrimemR500_gSM0p3"
-    for ptCut in [50, 100]:
-        for mult in [1,5,10, 20]:
-            for resMass in [350, 400, 450, 500, 550, 750, 950]:
-                for coupling in [1,2,3,4]:
-                    posCut=template.find("Ph")+2
-                    posMass=template.find("mR")+2
-                    posCoupling=template.find("gSM0p")+5
-                    posMul=template.find("mulX")+4
-                    pos_1=template[posCut:].find("_")+ posCut
-                    pos_2=template[posMass:].find("_")+posMass
-                    pos_3=template[posCoupling:].find("_")+posCoupling
-                    newTemplate=template[:posCut]+str(ptCut)+template[pos_1:posMass]+str(resMass)+template[pos_2:posCoupling]+str(coupling)+template[pos_3:posMul]+str(mult)+".h5"
-                    print("newTemplate: ", newTemplate)
-                    if os.path.isfile(config['sigBkgDir']+newTemplate):
-                        print("fileExist!")
-                        config['title']=titleTemplate+"_Ph"+str(ptCut)+"_mR"+str(resMass)+"_gSM"+str(coupling)+"_Mul"+str(mult)
-                        config['sigBkgDataFile']=newTemplate
-                        signalReconstruction(config)
-                    else:
-                        print("file does not exist!")
+    #config['sigBkgDir']="/lustre/SCRATCH/atlas/ywng/WorkSpace/r21/gp-toys/data/all/MC/feb2018/"
+    #template="MC_bkgndNSig_dijetgamma_g85_2j65_Ph100_ZPrimemRp5_gSM0p3_mulX10.h5"
+    #titleTemplate="testY"
+    #sigHistTemplate= "reweighted_Ph100_ZPrimemR500_gSM0p3"
+    #for ptCut in [50, 100]:
+    #    for mult in [1,5,10, 20]:
+    #        for resMass in [350, 400, 450, 500, 550, 750, 950]:
+    #            for coupling in [1,2,3,4]:
+    #                posCut=template.find("Ph")+2
+    #                posMass=template.find("mR")+2
+    #                posCoupling=template.find("gSM0p")+5
+    #                posMul=template.find("mulX")+4
+    #                pos_1=template[posCut:].find("_")+ posCut
+    #                pos_2=template[posMass:].find("_")+posMass
+    #                pos_3=template[posCoupling:].find("_")+posCoupling
+    #                newTemplate=template[:posCut]+str(ptCut)+template[pos_1:posMass]+str(resMass)+template[pos_2:posCoupling]+str(coupling)+template[pos_3:posMul]+str(mult)+".h5"
+    #                print("newTemplate: ", newTemplate)
+    #                if os.path.isfile(config['sigBkgDir']+newTemplate):
+    #                    print("fileExist!")
+    #                    config['title']=titleTemplate+"_Ph"+str(ptCut)+"_mR"+str(resMass)+"_gSM"+str(coupling)+"_Mul"+str(mult)
+    #                    config['sigBkgDataFile']=newTemplate
+    #                    signalReconstruction(config)
+    #                else:
+    #                    print("file does not exist!")
 
         #change the amplitude in signal kernel
     #    for resMass in [250, 350, 400, 450, 500, 550, 750, 950, 1500]:
