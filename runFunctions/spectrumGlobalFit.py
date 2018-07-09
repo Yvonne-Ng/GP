@@ -9,9 +9,14 @@
 #from drawStuff import drawFit
 from classFitFunction import *
 
-def spectrumGlobalFit(config):
-    mjjData=dataSet(config['xMinFit'], config['xMaxFit'], config['xMinGP'], config['xMaxGP'], dataFile=config['dataFile'],dataFileDir=config['dataFileTDir'], dataFileHist=config['dataFileHist'],officialFitFile=config['officialFitFile'], useScaled=config['useScaled'])
+fitFunctionFromCode=["UA2", "std4Params", "param3fit", "param5fit"]
+fitFunctionCodeStd={"UA2": 1, "std4Params": 4, "param3fit": 3, "param5fit": 5}
+nParam=[4, 4, 3,5]
 
+def spectrumGlobalFit(config):
+    print(config)
+    mjjData=dataSet(config['xMinFit'], config['xMaxFit'], config['xMinGP'], config['xMaxGP'], dataFile=config['dataFile'],dataFileDir=config['dataFileTDir'], dataFileHist=config['dataFileHist'],officialFitFile=config['officialFitFile'], useScaled=config['useScaled'])
+    spectrumFitLog=["----Log for %s----"%(config["title"])]
     # Create a fit function
 #----find weight hist
     if not config['useScaled']:
@@ -24,11 +29,22 @@ def spectrumGlobalFit(config):
     print("weight: ",mjjData.weight)
 
     yFit=Fit.doFit(initFitParam=config['initFitParam'], initRange=config['initRange'], trial=100, useScaled=config['useScaled'])
+    #-- saving the log---
+    #spectrumFitLog.append("fit function: %s"%fitFunctionFromCode[config["fitFunction"]])
+    #spectrumFitLog.append("fit range: %d - %d"%(config["xMinFit"], config["xMaxFit"]))
+    spectrumFitLog.append("minimum -LL: %d"%Fit.minimumLLH)
+    if Fit.minimumLLH>900:
+        spectrumFitLog.append("possible Bad Fit")
+    for i in range(len(Fit.bestFitParams)):
+        spectrumFitLog.append("parameter{0}   {1}".format(i+1, Fit.bestFitParams[i]))
+    spectrumFitLog.append("--------------------------------------\n")
+
     print("yFit: ",yFit)
     print("yData: ", mjjData.yData)
 
     sig, chi2=resSigYvonne(yFit,mjjData.yData, config['weightHist'])
     drawFit(mjjData.xData, mjjData.yerrData, mjjData.yData, yFit, sig,config['title'])
+    return spectrumFitLog
 
 if __name__=="__main__":
 #-----------a template config file -------#
