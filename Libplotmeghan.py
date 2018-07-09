@@ -532,6 +532,11 @@ def model_3param(params,t, xErr):
 
     return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(p2) )
 
+def model_5param(params,t, xErr):
+    p0, p1, p2, p3, p4 = params
+    sqrts = 13000.
+    return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(-p2-p3*np.log(t/sqrts)-p4*(np.log(t/sqrts))**2) )
+
 class logLike_3ff:
     def __init__(self, x, y, xe,weight=None):
         self.x = x
@@ -556,6 +561,31 @@ class logLike_3ff:
         except:
             return np.inf
 
+class logLike_5ff:
+    def __init__(self, x, y, xe,weight=None):
+        self.x = x
+        self.y = y
+        self.xe = xe
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+    def __call__(self, p0, p1, p2, p3, p4):
+        params = p0, p1, p2, p3, p4
+        bkgFunc = model_5param(params, self.x,self.xe)
+        logL = 0
+        for ibin in range(len(self.y)):
+            data = self.y[ibin]
+            bkg = bkgFunc[ibin]
+            binWeight = self.weight[ibin]
+            logL += -simpleLogPoisson(data/binWeight, bkg/binWeight)
+        try:
+            logL
+            return logL
+        except:
+            return np.inf
+
+
 def logLike_3ffOff(x, y, xFit, yFit, xe):
     logL = 0
     for ibin in range(len(y)):
@@ -568,13 +598,12 @@ def logLike_3ffOff(x, y, xFit, yFit, xe):
     except:
         return np.inf
 
+
 def fit_3ff(num,lnprob, initParam=None, initFitParam=None, initRange=None, Print=True):
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
     if initFitParam==None:
         initFitParam=[50000000, 200, 300]
-#    initParam=[289.23835739677855, 36.840272925751094, -2.6319426698603223]
-    #initParam=[1072002.0144121815, 75.21331095659207, -0.6270716885884724]
     if initParam==None:
         initParam=[21446363.154059794, 89.30345184915959, 0.10256264361501621]
     for i in range(num):
@@ -598,6 +627,34 @@ def fit_3ff(num,lnprob, initParam=None, initFitParam=None, initRange=None, Print
             print("initParam: ", initParam)
     if Print:
         print("fit function")
+        print ("min LL", minLLH)
+        print ("best fit vals", best_fit_params)
+    return minLLH, best_fit_params
+
+def fit_5ff(num,lnprob, initParam=None, initFitParam=None, initRange=None, Print=True):
+    minLLH = np.inf
+    best_fit_params = (0., 0., 0.)
+    if initFitParam==None:
+        initFitParam=[50000000, 200, 300, 300, 200]
+    if initParam==None:
+        initParam=[21446363.154059794, 89.30345184915959, 0.10256264361501621, 10, 10]
+    for i in range(num):
+
+        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
+                  p0 = initParam[0], p1 = initParam[1], p2 = initParam[2], p3=initParam[3], p4=initParam[4],
+
+                  error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1,error_p3=1e-1, error_p4=1e-1,
+                  limit_p0 = (500000, 50000000.), limit_p1 = (-100., 200.), limit_p2 = (-100., 100.), limit_p3=(-100, 100), limit_p4=(-100, 100))
+        m.migrad()
+        print("LL: ", m.fval)
+        initParam=[x * np.random.random() for x in initFitParam]
+        if m.fval < minLLH:
+            minLLH = m.fval
+            best_fit_params = m.args
+            initParam=[x * np.random.random() for x in initFitParam]
+            print("initParam: ", initParam)
+    if Print:
+        print("fit function 5 params")
         print ("min LL", minLLH)
         print ("best fit vals", best_fit_params)
     return minLLH, best_fit_params
@@ -780,51 +837,92 @@ def model_4param(t, params, xErr):
     return (p0 * ((1.-t/sqrts)**p1) * (t/sqrts)**(-p2-p3-np.log(t/sqrts))*(xErr) )
 
 class logLike_4ff: #if you want to minimize, use this to calculate the log likelihood
-    def __init__(self, x, y, xe):
+    def __init__(self, x, y, xe, weight=None):
         self.x = x
         self.y = y
         self.xe = xe
+        if weight is not None:
+            self.weight=weight
+        else:
+            self.weight=np.ones(self.x.size)
+
     def __call__(self, p0, p1, p2, p3):
         params = p0, p1, p2, p3
         bkgFunc = model_4param(self.x, params, self.xe)
         logL = 0
+        #for ibin in range(len(self.y)):
+        #    data = self.y[ibin]
+        #    bkgFunc[ibin]
+        #    logL += -simpleLogPoisson(data, bkgFunc)
+        #try:
+        #    logL
+        #    return logL
+        #except:
+        #    return np.inf
         for ibin in range(len(self.y)):
             data = self.y[ibin]
-            bkgFunc[ibin]
-            logL += -simpleLogPoisson(data, bkgFunc)
+            bkg = bkgFunc[ibin]
+            binWeight = self.weight[ibin]
+            logL += -simpleLogPoisson(data/binWeight, bkg/binWeight)
         try:
             logL
             return logL
         except:
             return np.inf
 
+
 def fit_4ff(num, lnprob, initParam=None, initFitParam=None, initRange=None,Print=True): #use this to minimize for the best fit function
     minLLH = np.inf
     best_fit_params = (0., 0., 0.)
 
     if initParam==None: # use default values if it's not specifiied
-        initParam=[52, 53, -1.199, 1]
-    for i in range(len(initParam)):
-        initParam[i] = initParam[i] *np.random.random()
+        initParam=[52, 100, -1.199, 1]
+    if initFitParam==None:
+        initFitParam=[100000000, 10000000, 100, 300]
+    #for i in range(len(initParam)):
+    #    initParam[i] = initParam[i] *np.random.random()
     if initRange==None:
-        initRange=[(-10, 100000.),(-100., 100.),(-100., 100.),(-100., 100.)]
+        initRange=[(-10, 10000000.),(-100., 10000000.),(-100., 100.),(-100., 100.)]
 
-    print("UA fitting using using inital params: ", initParam)
-    print("UA fitting using param range: ", initRange)
+
+    print("4ff fitting using using inital params: ", initParam)
+    print("4ff fitting using param range: ", initRange)
     for i in range(num):
-        m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
-                p0=initParam[0], p1=initParam[1], p2=initParam[2], p3=initParam[3],
-                   error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
-                   limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
+        m = Minuit(lnprob, throw_nan = False, pedantic = False, print_level = 0,
+                  p0 = initParam[0], p1 = initParam[1], p2 = initParam[2], p3= initParam[3],
+                  error_p0 = 1e-2, error_p1 = 1e-1, error_p2 = 1e-1, error_p3 = 1e-1,
+                  limit_p0 = initRange[0], limit_p1 = initRange[1], limit_p2 = initRange[2], limit_p3=initRange[3])
         m.migrad()
+        print("trial ", i, " fit params: ", m.args)
+        print("-log likelihood: ", m.fval)
         if m.fval < minLLH:
             minLLH = m.fval
             best_fit_params = m.args
+        initParam=[x * np.random.random() for x in initFitParam]
+
+    if best_fit_params == (0., 0., 0.):
+        print("------------------fit failed ----------------")
+
     if Print:
         print("fit function 4ff")
-        print ("min LL", minLLH)
+        print ("min LL", prettyfloat(minLLH))
         print ("best fit vals", best_fit_params)
+
     return minLLH, best_fit_params
+    #for i in range(num):
+    #    m = Minuit(lnprob, throw_nan=False, pedantic=False, print_level=0,
+    #            p0=initParam[0], p1=initParam[1], p2=initParam[2], p3=initParam[3],
+    #               error_p0=1e-2, error_p1=1e-1, error_p2=1e-1, error_p3=1e-1,
+    #               limit_p0=(0, 100.), limit_p1=(-100., 100.), limit_p2=(-100., 100.),limit_p3=(-100.,100.))
+    #    m.migrad()
+    #    if m.fval < minLLH:
+    #        minLLH = m.fval
+    #        best_fit_params = m.args
+    #if Print:
+    #    print("fit function 4ff")
+    #    print ("min LL", minLLH)
+    #    print ("best fit vals", best_fit_params)
+    #return minLLH, best_fit_params
 
 class logLike_gp_sig_fixedH:
     def __init__(self, x, y, xerr, fixedHyperparams):

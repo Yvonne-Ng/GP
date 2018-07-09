@@ -187,7 +187,7 @@ def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, 
                 can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
         can.save("results/"+title)
 
-def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, legend=[],sig=None, title=None, saveTxt=False, saveTxtDir=None):
+def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, legend=[],sigList=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
     with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
@@ -202,11 +202,13 @@ def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None
         #ratio plot:
         #print("x: ", xData)
         #print("sig: ", sig)
+
         can.ax.legend(framealpha=0)
-        if sig:
-            can.ratio[0].stem(xData, sig, markerfmt='.', basefmt=' ')
-            can.ratio[0].set_ylabel("significance")
-            can.ratio[0].axhline(0, linewidth=1, alpha=0.5)
+        i=0
+        for sig in sigList:
+            can.ratio[i].stem(xData, sig[i], markerfmt='.', basefmt=' ')
+            can.ratio[i].set_ylabel("significance")
+            can.ratio[i].axhline(0, linewidth=1, alpha=0.5)
         can.save(title)
 
 def makePrettyPlots_chi2(GPchi2, BKGchi2, title, drawchi2=False, xname=r'$\chi^{2}$/d.o.f.', label1 = "Gaussian Process", label2 = "Fit Function"):
