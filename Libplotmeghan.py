@@ -288,7 +288,7 @@ def fit_gp_minuit(num, lnprob):
             best_fit_params = m.values
     print("GP bkgnd kernel")
     print("min ll", min_likelihood)
-    print(f'best fit params {best_fit_params}')
+    #print(f'best fit params {best_fit_params}')
     return min_likelihood, best_fit_params
 
 class logLike_minuit_sig:
@@ -407,7 +407,7 @@ def fit_gpSig_minuit(num, lnprob, mass, initParams):
   #      if neg:
   #          return (-2.0*guesses[par], 2.0*guesses[par])
   #      return (guesses[par] * 0.5, guesses[par] * 2.0)
-    initPArams: [11247987465.699894, 212.25600368592418, 68700677.27700837, 822.4296451063649, 8860.5707290683, 947610.1895893898, 38.35460867371643, 3.363278743203807]
+    initPArams= [11247987465.699894, 212.25600368592418, 68700677.27700837, 822.4296451063649, 8860.5707290683, 947610.1895893898, 38.35460867371643, 3.363278743203807]
     for i in range(num):
         iamp = initParams[0]#i*1.2*np.random.random()# * 2*guesses['amp']
         idecay = initParams[1]#*1.2*np.random.random()# * 0.64
@@ -458,7 +458,7 @@ def fit_gpSig_minuit(num, lnprob, mass, initParams):
             best_fit_params = m.values
     print("GP sig kernel from bkgnd")
     print("min ll", min_likelihood)
-    print(f'best fit params {best_fit_params}')
+    print('best fit params {best_fit_params}')
     return min_likelihood, best_fit_params
 
 #------GP signal plus bkgnd
