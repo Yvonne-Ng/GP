@@ -11,7 +11,7 @@ def drawSignalSubtractionFit(signalBkgDataSet, ySignalData, ySignalFit, ySignalF
     title=title+"signalGPfit"
 #drawing the signal
     ext = ".pdf"
-    with Canvas(f'%s{ext}'%title, "GPSig-GPBkgFit Sig", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "GPSig-GPBkgFit Sig", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, ySignalData, yerr=signalBkgDataSet.yerrData, fmt='.g', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,10000.0)
         if doLog:
@@ -28,7 +28,7 @@ def drawSignalGaussianFit(signalBkgDataSet, asignalDataSet, doLog=False, title="
 #drawing the signal
     ext = ".pdf"
     title=[s + "SignalGaussianFit" for s in title]
-    with Canvas(f'%s{ext}'%title, "Gaussian Fit Sig", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "Gaussian Fit Sig", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.g', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,10000.0)
         if doLog:
@@ -45,7 +45,7 @@ def drawSignalReconstructed(signalBkgDataSet, asignalDataSet, doLog=False, title
 #drawing the signal with meghan's method
     ext = args.output_file_extension
     title=title+"signalonlyMeghan"
-    with Canvas(f'%s{ext}'%title, "GPSig-GPSBFit Sig", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "GPSig-GPSBFit Sig", "", "", 2) as can:
         can.ax.errorbar(xSB, ySig, yerr=yerrSB, fmt='.g', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,6000000)
         can.ax.set_yscale('log')
@@ -60,7 +60,7 @@ def drawAllSignalFit(signalBkgDataSet, asignalDataSet, doLog=False, saveTxt=Fals
 #drawing the signal
     ext = ".pdf"
     title=title+"allSignalFit"
-    with Canvas(f'%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.k', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,15000.0)
         if doLog:
@@ -79,7 +79,7 @@ def drawSignalReconstructed(signalBkgDataSet, asignalDataSet, doLog=False,title=
 #drawing the signal with meghan's method
     ext = args.output_file_extension
     title=title+"signalonlyMeghan"
-    with Canvas(f'%s{ext}'%title, "GPSig-GPSBFit Sig", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "GPSig-GPSBFit Sig", "", "", 2) as can:
         can.ax.errorbar(xSB, ySig, yerr=yerrSB, fmt='.g', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,6000000)
         can.ax.set_yscale('log')
@@ -94,7 +94,7 @@ def drawSignalReconstructed(signalBkgDataSet, asignalDataSet, doLog=False,title=
 def drawFitDataSet(dataSet, title, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
-    with Canvas(f'%s{ext}'%title , "GP bkgnd kernel", "GP signal+bkgnd kernel", 2) as can:
+    with Canvas('%s{ext}'%title , "GP bkgnd kernel", "GP signal+bkgnd kernel", 2) as can:
         can.ax.errorbar(dataSet.xData, dataSet.yData, yerr=dataSet.yerrData, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
         #can.ax.plot(dataSet.x_simpleFit, dataSet.yFit_simpleFit, '-r', label="fit function")
@@ -143,7 +143,7 @@ def drawChi2ToySet(dataSet, ToyDataSet, title):
 def drawFit(xData=None, yerr=None, yData=None, yFit=None,sig=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
-    with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
+    with Canvas('%s{ext}'%title , "UA2", "", 2) as can:
         can.ax.errorbar(xData, yData,yerr, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
         can.ax.plot(xData, yFit, '-g', label="UA2Fit") #drawing
@@ -161,7 +161,7 @@ def drawFit(xData=None, yerr=None, yData=None, yFit=None,sig=None, title=None, s
 def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, signiLegend=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
-    with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
+    with Canvas('%s{ext}'%title , "UA2", "", 2) as can:
         can.ax.errorbar(xData, yData,yerr, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
         can.ax.plot(xData, yFit, '-g', label="bkgndKernelFit") #drawing
@@ -190,7 +190,7 @@ def drawFit2(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, sig=None, 
 def drawFit3(xData=None, yerr=None, yData=None, yFit=None,yFit2=None, yFit3=None, legend=[],sigList=None, title=None, saveTxt=False, saveTxtDir=None):
     # draw the data set using diffrent fits
     ext= ".pdf"
-    with Canvas(f'%s{ext}'%title , "UA2", "", 2) as can:
+    with Canvas('%s{ext}'%title , "UA2", "", 2) as can:
         can.ax.errorbar(xData, yData,yerr, fmt='.g', label="datapoints") # drawing the points
         can.ax.set_yscale('log')
         if legend ==[]:
@@ -290,7 +290,7 @@ def drawAllSignalFitYvonne(signalBkgDataSet, asignalDataSet, doLog=False, saveTx
 #drawing the signal
     ext = ".pdf"
     title=title+"allSignalFit"
-    with Canvas(f'%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
+    with Canvas('%s{ext}'%title, "All Signal Fits", "", "", 2) as can:
         can.ax.errorbar(signalBkgDataSet.xData, asignalDataSet.ySigData, yerr=signalBkgDataSet.yerrData, fmt='.k', label="signal MC injected") # drawing the points
         can.ax.set_ylim(0.1,15000.0)
         if doLog:
